@@ -36,54 +36,39 @@ Redis/Celery、版本化 FAISS 知识索引以及 OpenAI-compatible 或本地规
 
 ```mermaid
 flowchart TD
-    A["Developer / CI Webhook / GitLab Job"] --> B["FastAPI Router"]
-    B --> C{"Analyze Mode"}
-    C --> D["LLM Only"]
-    C --> E["RAG"]
-    C --> F["RAG + Tool Context"]
-    C --> G["GitLab Job Fetch"]
+    A["Manual API / GitLab / Jenkins Webhook"] --> B["FastAPI + Tenant Auth"]
+    B --> C["PostgreSQL: Event / Diagnosis"]
+    B --> D["Redis / Celery Queue"]
+    D --> E["Diagnosis Worker"]
+    E --> F["GitLab / Jenkins Provider"]
+    E --> G["Log Mask + Extract"]
+    G --> H["Tenant-scoped Hybrid Retrieval"]
+    H --> I["Versioned FAISS Index"]
+    E --> J["Read-only Provider Tools"]
+    H --> K["Diagnosis Orchestrator"]
+    J --> K
+    K --> L["OpenAI-compatible / Rule Gateway"]
+    L --> M["Validated Diagnosis + References"]
+    M --> C
 
-    G --> H["Trace Extract + Mask Secrets"]
-    H --> F
-
-    E --> I["Local Retriever"]
-    F --> I
-    I --> J["Knowledge Docs"]
-    I --> K["Embedding + FAISS"]
-    K --> L["Top-k References"]
-
-    F --> M["Rule Tools"]
-    M --> N["Failure History"]
-    M --> O["Pipeline Context"]
-
-    D --> P["Prompt Builder"]
-    L --> P
-    N --> P
-    O --> P
-    P --> Q["LLM API"]
-    Q --> R["JSON Parse"]
-    R --> S["Pydantic Validate"]
-    S --> T["Structured Diagnosis"]
-    T --> U["Trace Log + Evaluation"]
+    N["Knowledge API"] --> O["PostgreSQL: Documents / Chunks"]
+    N --> P["Knowledge Worker"]
+    P --> I
 ```
 
 ## 目录结构
 
 ```text
 ci-assistant-platform/
-├── ci_assistant/              # 0.5.0 平台主包与默认运行链路
-├── ci_analysis_demo/          # 旧 API 兼容包
-│   ├── clients/               # GitLab API client
-│   ├── core/                  # 配置与日志
-│   ├── knowledge_docs/        # RAG 知识库与评测样例
-│   ├── prompts/               # LLM prompt 模板
-│   ├── routers/               # FastAPI 路由
-│   ├── schemas/               # Pydantic 请求/响应模型
-│   ├── scripts/               # 离线评测脚本
-│   ├── services/              # LLM、RAG、工具上下文服务
-│   ├── tools/                 # 规则工具与 mock 数据源
-│   ├── utils/                 # 依赖注入、异常、fallback、timer
-│   └── main.py                # 应用入口
+├── ci_assistant/              # 主运行包
+│   ├── api/                   # API、鉴权、健康检查与指标
+│   ├── diagnosis/             # 日志预处理和诊断编排
+│   ├── knowledge/             # 文档处理、混合检索和 FAISS 索引
+│   ├── persistence/           # SQLAlchemy、Repository 和 Alembic
+│   ├── providers/             # GitLab/Jenkins Provider
+│   ├── tools/                 # Provider-aware 只读工具
+│   └── workers/               # Celery 诊断与知识任务
+├── ci_analysis_demo/          # 旧 API 兼容包，仅维护兼容性
 ├── docs/                      # 产品化、架构、评测、简历和面试材料
 ├── Dockerfile
 ├── Makefile
@@ -97,6 +82,7 @@ ci-assistant-platform/
 ```bash
 cp .env.example .env
 cp config.example.yml config.yml
+# 设置 .env 中的 POSTGRES_PASSWORD
 docker-compose up -d --build
 curl http://127.0.0.1:8080/health/ready
 ```
@@ -168,7 +154,7 @@ curl -X POST "http://127.0.0.1:8080/api/v1/diagnoses/logs" \
   }'
 ```
 
-旧 `ci_analysis_demo` 接口在迁移兼容期继续保留，其示例如下：
+旧 `ci_analysis_demo` 接口仅在兼容期保留；新接入必须使用 `/api/v1`。兼容示例如下：
 
 RAG + 工具上下文分析：
 

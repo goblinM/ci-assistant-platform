@@ -1,134 +1,119 @@
-# 架构说明
+# CI Assistant Platform 架构
 
-## 整体流程
+本文描述 `ci_assistant` 0.5.0 的实际运行架构。旧包 `ci_analysis_demo` 只承担兼容职责，
+不再作为新功能的目标架构。
+
+## 系统数据流
 
 ```mermaid
 flowchart TD
-    A["Manual Log"] --> B["FastAPI Router"]
-    A1["GitLab project_id + job_id"] --> A2["Bootstrap: Job + Trace"]
-    A2 --> B
-    B --> C{"analyze_log_by_mode"}
-    C --> D["LLM Analyze"]
-    C --> E["RAG Analyze"]
-    C --> F["Rule / Autonomous Tool Analyze"]
+    A["Manual API / GitLab / Jenkins Webhook"] --> B["FastAPI"]
+    B --> C["Request ID + Tenant Auth"]
+    C --> D["PostgreSQL"]
+    C --> E["Redis / Celery"]
+    E --> F["Diagnosis Worker"]
 
-    E --> G["LocalRetriever"]
-    F --> G
-    G --> H["knowledge_docs.json"]
-    G --> I["SentenceTransformer Embedding"]
-    I --> J["FAISS IndexFlatIP"]
-    J --> K["Top-k References"]
-
-    F --> L["Tool Context Service"]
-    L --> M["Error Rules"]
-    L --> N["ToolsExecutor"]
-    N --> N1["Tool Registry"]
-    N1 --> N2["Failure History"]
-    N1 --> N3["Pipeline / Job Context"]
-    N1 --> N4["Dependency File Check"]
-    N1 --> N5["Recent Commits"]
-    A2 --> N6["ToolRuntimeContext: Prefetched Job"]
-    N6 --> N
-
-    D --> O["Prompt Builder"]
-    K --> O
-    N --> O
-    O --> P["LLM API"]
-    P --> Q["JSON Parse"]
-    Q --> R["Pydantic Validation"]
-    K --> R
-    R --> S["Structured Response"]
-```
-
-## 模块说明
-
-| 模块 | 作用 |
-| --- | --- |
-| `routers/` | API 路由，负责接收请求和异常转换 |
-| `schemas/` | Pydantic 请求和响应结构 |
-| `services/llm_service.py` | Prompt 构造、LLM 调用、重试、响应校验 |
-| `services/rag_retriever.py` | 本地知识库 Hybrid Search、规则重排和 FAISS 检索 |
-| `services/tool_context_service.py` | 基于日志、错误规则和请求上下文选择工具并聚合结果 |
-| `services/tool_calling_service.py` | 解析模型返回的 tool_calls，并通过 executor 受控执行 |
-| `tools/base.py` | ToolSpec、ToolResult、ToolContext、ToolRuntimeContext 等统一模型 |
-| `tools/schemas.py` | 工具元信息和参数 schema |
-| `tools/executor.py` | 工具注册、筛选、执行、依赖注入、异常隔离和耗时记录 |
-| `tools/` | 历史故障、GitLab 上下文、依赖文件检查、近期提交等工具 |
-| `knowledge_docs/` | RAG 知识库和评测样例 |
-| `scripts/evaluate_ci_assistant.py` | 离线评测脚本 |
-
-## 产品化架构补充
-
-```mermaid
-flowchart LR
-    A["GitLab / Jenkins / Manual Input"] --> B["Auth + Project Permission"]
-    B --> C["Trace Fetch"]
-    C --> D["Sensitive Info Masking"]
-    D --> E["AI Diagnosis Pipeline"]
-    E --> F["Structured Response"]
-    F --> G["PR Comment / IM Notify / Issue Draft"]
-    F --> H["Audit Log"]
-    G --> I["User Feedback"]
-    I --> J["Evaluation Cases"]
-    I --> K["Knowledge Base Update"]
-    J --> L["Regression Evaluation"]
+    F --> G["GitLab / Jenkins Provider"]
+    F --> H["Log Preprocessor"]
+    H --> I["Tenant-scoped Hybrid Retriever"]
+    I --> J["Versioned FAISS"]
+    F --> K["Provider-aware Read-only Tools"]
+    I --> L["Diagnosis Orchestrator"]
     K --> L
+    L --> M["OpenAI-compatible / Rule Gateway"]
+    M --> N["Pydantic Diagnosis Result"]
+    N --> D
+
+    O["Knowledge API"] --> P["PostgreSQL Documents / Chunks"]
+    O --> Q["Knowledge Worker"]
+    Q --> J
 ```
 
-产品化后，核心链路需要增加四层：
+同步 API 只负责校验、持久化和派发任务；日志诊断、Provider 调用与知识索引在 Celery
+Worker 中执行。诊断结果、引用和 Trace 写入 PostgreSQL，Redis 只保存队列及短期任务结果，
+FAISS 保存版本化向量索引。
 
-- 权限层：用户只能分析自己有权限的项目和 job。
-- 安全层：CI trace 在进入 LLM 前做关键行提取、长度截断和敏感信息脱敏。
-- 审计层：记录 trace_id、项目、job、模型版本、检索命中文档、工具调用、耗时、fallback 和错误信息。
-- 反馈层：收集 helpful / not helpful / accepted suggestion，反哺评测集、知识库和 Prompt。
+## 运行组件
 
-## 关键设计
+| 组件 | 实现 | 职责 |
+| --- | --- | --- |
+| API | FastAPI | 鉴权、路由、健康检查、指标和任务派发 |
+| Worker | Celery | 异步诊断、知识入库和索引重建 |
+| Database | PostgreSQL + SQLAlchemy | 租户、连接、事件、诊断、Trace 和知识元数据 |
+| Queue | Redis | Celery broker/backend，不保存知识正文 |
+| Vector index | FAISS | 租户级版本索引和原子 `CURRENT` 切换 |
+| Migration | Alembic | PostgreSQL Schema 版本管理 |
+| AI gateway | OpenAI-compatible / Rule | 结构化诊断和离线降级 |
 
-### 1. LLM 输出必须二次校验
+Docker Compose 定义 `api`、`worker`、`migrate`、`postgres` 和 `redis` 五个服务。
 
-LLM 返回 JSON 后，不直接透传给前端，而是经过：
+## 主包模块
+
+| 路径 | 职责 |
+| --- | --- |
+| `ci_assistant/api/` | API、鉴权、错误 Envelope、健康检查和 Prometheus 指标 |
+| `ci_assistant/domain/` | CI 与 Tool 领域模型 |
+| `ci_assistant/providers/` | Provider Protocol、Registry、GitLab 和 Jenkins Adapter |
+| `ci_assistant/diagnosis/` | 日志脱敏、关键片段提取和诊断编排 |
+| `ci_assistant/llm/` | OpenAI-compatible 与规则诊断网关 |
+| `ci_assistant/knowledge/` | 文档处理、Embedding、混合检索和 FAISS 发布 |
+| `ci_assistant/tools/` | 按 Capability 和项目策略过滤的只读工具 |
+| `ci_assistant/persistence/` | 数据模型、Repository、事务和 Alembic |
+| `ci_assistant/workers/` | diagnosis/knowledge 队列任务 |
+
+## 核心边界
+
+### Provider 边界
+
+业务编排只依赖统一 `CIProvider`，不直接消费 GitLab/Jenkins 原始响应。Provider 负责状态、
+Run、Job、Log、Change 和 Webhook 的统一映射，并通过 Capability 声明可用读能力。
+
+### 诊断边界
+
+日志在进入检索、Tool 或模型前执行长度控制、错误片段提取和 Secret Mask。日志、知识和
+Tool Result 在 Prompt 中均标记为不可信证据。单个 Tool 或 RAG 失败允许降级，最终输出必须
+通过 `DiagnosisResult` 校验。
+
+### 知识边界
+
+知识正文、版本、来源和 ACL 位于 PostgreSQL；Chunk 向量位于 FAISS。检索必须同时携带
+tenant/project/provider 过滤条件。引用由真实检索结果覆盖，模型不能自行生成引用来源。
+
+### 安全边界
+
+- 生产 API Key 绑定租户，管理连接只允许管理员 Key。
+- GitLab/Jenkins Webhook 必须验证共享 Secret。
+- 默认 Tool 全部只读；写操作不属于 0.5.0 自动执行范围。
+- 容器使用非 root 用户。
+- PostgreSQL 的本地调试端口只绑定 `127.0.0.1`，生产密码不允许使用 Compose 默认值。
+
+## 持久化关系
 
 ```text
-json.loads -> AnalysisLogResponse.model_validate
+tenants
+├── ci_connections
+│   ├── projects
+│   └── ci_events
+├── diagnoses
+│   └── analysis_traces
+└── knowledge_documents
+    ├── knowledge_chunks
+    └── ingestion_jobs
 ```
 
-这样可以避免字段缺失、枚举非法、建议为空等问题进入下游系统。
+`evaluation_runs` 独立保存评测版本和指标。数据库变更只能通过新增 Alembic revision 完成。
 
-### 2. references 由 retriever 决定
+## 兼容层
 
-RAG 场景下，引用依据不交给模型自由生成。模型负责分析结论，服务端用真实检索到的 top-k 文档覆盖 `references`，保证引用可追溯、可评测。
+`ci_analysis_demo` 保留旧 `/ci/*` API 和原型评测链路，避免已有调用方立即中断。新功能、
+数据模型、Provider、Worker 和知识索引不得继续依赖该包。兼容层退役前必须确认调用方迁移，
+并以新旧接口回归测试保护公开行为。
 
-### 3. 工具调用从规则版演进为可治理执行层
+## 设计原则
 
-当前工具调用以规则选择为主：服务端根据日志提取关键字，再结合 tool tags、trigger_keywords、read_only、provider 等元信息选择工具。执行层统一由 `ToolsExecutor` 负责，单个工具失败不会打崩主流程。
-
-这个做法比一开始就接模型自主 tool calling 更稳定，也更适合作为学习项目第一版。后续可以在同一个 executor 之上接入模型自主 tool_calls，实现受控 Tool Calling。
-
-### 4. 评测拆成四类指标
-
-- schema 是否有效：服务稳定性
-- error_type 是否准确：分类能力
-- references 是否命中：RAG 检索质量
-- keyword score：原因和建议是否覆盖关键排查点
-
-### 5. 安全边界优先于自动动作
-
-当前系统默认只输出分析和建议，不自动修改代码、不自动重跑 pipeline。后续如果加入 Tool Calling，需要按风险分层：
-
-- 读取类工具：查询 job、trace、历史 case，默认允许。
-- 低风险写入：评论 PR 或发送 IM，需要项目授权。
-- 中高风险动作：创建 issue、重跑 pipeline，需要 Maintainer 确认。
-- 高风险动作：自动提交修复 MR，必须人工 review。
-
-### 6. GitLab 最小采集与按需调查
-
-`/ci/analyze-gitlab-job` 会强制获取 Job 和 Job Trace，因为 Trace 是错误识别、RAG Query 和工具选择的初始输入。Pipeline、最近提交和依赖文件不是每次分析都需要，因此不在入口处预取，而是交给规则工具或 Autonomous Tool Calling 按需查询。
-
-```text
-project_id + job_id
-  -> get_job + get_job_trace（最小启动数据）
-  -> primary_error / RAG / Tool Selection
-  -> pipeline / commits / dependency（按需工具调用）
-```
-
-预取 Job 通过请求级 `ToolRuntimeContext` 传给工具。如果模型再次调用 `query_job_context`，工具会先读取本次请求的缓存；只有 ID 不匹配或缓存不存在时才访问 GitLab API。该上下文不会写入全局 `ToolsExecutor`，避免并发请求之间串数据。
+1. references 只能来自真实检索结果。
+2. 默认只读，外部写操作必须独立授权。
+3. 在线查询与离线知识入库分离。
+4. Provider、LLM、RAG 和 Tool 失败具有稳定错误边界或降级行为。
+5. 配置按默认值、YAML、环境变量、Secret 文件分层覆盖。
+6. 公开 API、数据库迁移和兼容包变更必须有回归证据。

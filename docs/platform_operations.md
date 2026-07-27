@@ -9,6 +9,10 @@
 4. 检查 `GET /health/ready`，必须同时返回 database/redis 为 `ok`。
 5. 使用 `docker-compose logs migrate` 确认 Alembic 到达 head。
 
+`POSTGRES_PASSWORD` 为必填项，Compose 不提供生产默认密码。本地 DBeaver 调试端口默认是
+`127.0.0.1:15432`，只允许本机访问；可用 `POSTGRES_PORT` 调整本机端口。已有 PostgreSQL
+数据卷不会因为修改环境变量自动更新数据库角色密码，调整密码前应先完成备份和角色变更。
+
 ## 升级
 
 1. 备份 PostgreSQL、知识卷和当前镜像版本。
@@ -27,4 +31,3 @@
 - 文档未激活：检查 `ingestion_jobs.error` 和知识卷写权限。
 - Provider 失败：调用连接测试 API，检查最小只读 Token 权限。
 - 模型不可用：诊断会输出低置信度 fallback，并在 Trace 记录 `fallback_used`。
-

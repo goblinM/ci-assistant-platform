@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-from typing import Any
 import asyncio
+import logging
+from typing import Any
 from uuid import UUID
 
 from ci_assistant.core.config import load_settings
+from ci_assistant.core.errors import ErrorCode
 from ci_assistant.core.metrics import DIAGNOSIS_TASKS
 from ci_assistant.diagnosis.orchestrator import DiagnosisOrchestrator
 from ci_assistant.domain.ci import RunStatus
@@ -20,6 +22,10 @@ from ci_assistant.schemas.result import Reference
 from ci_assistant.tools import ProviderToolExecutor, default_tool_specs
 
 from .celery_app import app
+from .task_logging import log_task_failure
+
+
+logger = logging.getLogger(__name__)
 
 if app is None:
     raise RuntimeError("Celery must be installed to load worker tasks")
@@ -34,7 +40,19 @@ if app is None:
     max_retries=3,
 )
 def diagnose(self, diagnosis_id: str) -> dict[str, Any]:
-    return asyncio.run(_diagnose(diagnosis_id))
+    """执行单条诊断任务，并以安全字段记录失败事件。"""
+
+    try:
+        return asyncio.run(_diagnose(diagnosis_id))
+    except Exception as exc:
+        log_task_failure(
+            logger,
+            task_name="ci_assistant.diagnose",
+            identifier=diagnosis_id,
+            error_code=ErrorCode.DIAGNOSIS_FAILED.value,
+            exception=exc,
+        )
+        raise
 
 
 async def _diagnose(diagnosis_id: str) -> dict[str, Any]:

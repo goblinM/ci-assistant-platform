@@ -1,6 +1,6 @@
-# CI Assistant Platform ADOS P0 接入结果
+# CI Assistant Platform ADOS 接入结果
 
-> 执行日期：2026-07-27  
+> 执行日期：2026-07-27
 > 接入范围：用户确认的 P0 项目  
 > 项目：`ci-assistant-platform`
 
@@ -83,5 +83,57 @@ git diff --check
 
 ## 后续边界
 
-P1/P2 项目仍未执行，包括批量 Docstring、旧大文件拆分、依赖治理、CI/CD、ADR 和兼容包
-退役。后续任何治理应重新确认范围，并继续以 `757598e` 为接入前基线审查差异。
+P0 完成时，P1/P2 尚未执行；后续治理继续以 `757598e` 为接入前基线审查差异。
+
+## P1 治理结果
+
+> 执行日期：2026-07-27
+> 基线：`55aee2e`
+
+### 实施内容
+
+- 新增 Worker 安全失败日志，只记录任务名、业务标识、稳定错误码和异常类型，不记录异常
+  正文、Prompt 或 CI 日志。
+- 新增 `KNOWLEDGE_INGESTION_FAILED` 稳定错误码。
+- 为本次实际修改的诊断、知识入库和重建任务入口补充中文 Docstring。
+- 明确 `pyproject.toml` 为依赖真源，使 `requirements.txt` 与
+  `requirements-runtime.txt` 保持目标运行依赖一致；pandas 和 SentenceTransformer 继续只
+  属于 `legacy` 可选依赖。
+- 将 `docs/evaluation.md` 更新为单元、契约、持久化、知识、安全、Compose E2E 和外部
+  Provider 七层测试矩阵。
+- 在架构文档中补充兼容包退役的五项必要条件。
+
+没有批量补历史 Docstring，没有拆分 `ci_analysis_demo/services/llm_service.py`，没有移动
+目录、修改公开 API、数据库 Schema、依赖版本或 CI/CD。
+
+### 验证结果
+
+专项测试：
+
+```text
+venv/bin/pytest -q \
+  ci_assistant/tests/test_task_logging.py \
+  ci_assistant/tests/test_dependency_governance.py \
+  ci_assistant/tests/test_workers.py
+```
+
+结果：`3 passed in 0.21s`。
+
+完整回归：
+
+```text
+venv/bin/pytest -q
+```
+
+结果：`60 passed, 1 warning in 7.82s`。唯一警告来自 FastAPI TestClient 对当前 Starlette
+适配层的弃用提示，不是本次治理引入的失败。
+
+`compileall` 与 `git diff --check` 均通过。未启动 Compose 或调用外部 GitLab、Jenkins、
+LLM 服务。
+
+### 未纳入本次 P1
+
+- 255 个静态扫描 Docstring 缺口只采用“触及时治理”，未批量修改。
+- 750 行兼容层 LLM 文件需在退役或真实功能需求中单独评审。
+- CI/CD、ADR、依赖锁定和兼容包实际删除仍属于后续治理。
+- ADOS 验证器要求的五份额外文档仍未获授权创建，机器验证状态保持 `Failed`。

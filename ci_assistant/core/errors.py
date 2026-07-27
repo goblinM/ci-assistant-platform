@@ -12,6 +12,7 @@ class ErrorCode(str, Enum):
     RESOURCE_NOT_FOUND = "RESOURCE_NOT_FOUND"
     WEBHOOK_INVALID = "WEBHOOK_INVALID"
     KNOWLEDGE_INVALID = "KNOWLEDGE_INVALID"
+    KNOWLEDGE_INGESTION_FAILED = "KNOWLEDGE_INGESTION_FAILED"
     LLM_UNAVAILABLE = "LLM_UNAVAILABLE"
     LLM_RESPONSE_INVALID = "LLM_RESPONSE_INVALID"
     DIAGNOSIS_FAILED = "DIAGNOSIS_FAILED"
@@ -33,4 +34,3 @@ class PlatformError(Exception):
         self.message = message
         self.status_code = status_code
         self.details = details
-

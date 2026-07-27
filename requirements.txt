@@ -1,19 +1,20 @@
+# Compatibility install list for environments that still consume requirements.txt.
+# pyproject.toml is the dependency source of truth; keep this file aligned with
+# requirements-runtime.txt. Legacy-only packages use: pip install -e ".[legacy]".
 alembic>=1.13
-fastapi[standard]
-pydantic-settings
-prometheus-client>=0.20
-PyYAML>=6
-python-dotenv
-openai
-requests
-redis[hiredis]>=5.2,<6
 aiohttp
 asyncpg>=0.29
 celery[redis]>=5.4
-httpx
-pandas
-numpy
 faiss-cpu
-sentence-transformers
+fastapi[standard]
+httpx
+numpy
+openai
+prometheus-client>=0.20
+pydantic-settings
+PyYAML>=6
+python-dotenv
+redis[hiredis]>=5.2,<6
+requests
 SQLAlchemy[asyncio]>=2.0
 uvicorn[standard]

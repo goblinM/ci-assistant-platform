@@ -137,3 +137,40 @@ LLM 服务。
 - 750 行兼容层 LLM 文件需在退役或真实功能需求中单独评审。
 - CI/CD、ADR、依赖锁定和兼容包实际删除仍属于后续治理。
 - ADOS 验证器要求的五份额外文档仍未获授权创建，机器验证状态保持 `Failed`。
+
+## P2 治理结果
+
+> 执行日期：2026-07-27
+> 基线：`5206738`
+
+### 实施内容
+
+- 新增 GitHub Actions `Quality` 工作流，在 Python 3.10/3.11 执行安装、完整测试、源码编译
+  和 Alembic 离线升级 SQL 校验，权限限制为 `contents: read`。
+- 新增 ADOS 轻量文档入口：开发、待办、决策、排障和 Changelog；已有长文档继续保留并由
+  入口引用。
+- 记录主包命名、持久化职责、Provider、默认只读、依赖真源和渐进治理六项工程决策。
+- 补充 PostgreSQL 逻辑备份、FAISS 重建、隔离恢复演练和危险恢复命令边界。
+- 新增 CI 质量门和 ADOS 文档存在性自动测试。
+
+没有升级或锁定依赖，没有删除兼容包，没有修改公开 API、数据库 Schema 或业务目录，也没有
+启动外部服务。
+
+### 验证结果
+
+- P2 专项测试：`5 passed in 0.30s`。
+- GitHub Actions YAML 静态解析：通过。
+- `alembic upgrade head --sql`：两个 revision 均成功生成 PostgreSQL SQL。
+- 完整回归：`62 passed, 1 warning in 8.76s`。
+- `compileall` 与 `git diff --check`：通过。
+- ADOS `validate_adoption.py`：`Passed`，13 项检查全部通过，无 warning、无 failure。
+
+GitHub Actions 文件已在本地验证，但远端工作流是否成功仍需提交推送后由 GitHub 实际运行，
+本次不把未发生的远端执行声明为通过。
+
+### 后续治理
+
+- 观察首次 GitHub Actions 运行并修复环境特有问题。
+- 根据实际发布需求选择依赖锁定、SBOM 和镜像漏洞扫描方案。
+- 定期执行 PostgreSQL 恢复演练并记录 RPO/RTO。
+- 兼容包必须满足架构文档的五项门槛后再进入独立退役变更。

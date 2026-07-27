@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ci-assistant-platform"
+version = "0.5.0"
+description = "Private-deployable AI-assisted CI failure diagnosis platform"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "alembic>=1.13",
+    "aiohttp",
+    "asyncpg>=0.29",
+    "celery[redis]>=5.4",
+    "faiss-cpu",
+    "fastapi[standard]",
+    "httpx",
+    "numpy",
+    "openai",
+    "pydantic-settings",
+    "prometheus-client>=0.20",
+    "PyYAML>=6",
+    "python-dotenv",
+    "requests",
+    "redis[hiredis]>=5.2,<6",
+    "SQLAlchemy[asyncio]>=2.0",
+    "uvicorn[standard]",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.23",
+]
+legacy = [
+    "pandas",
+    "sentence-transformers",
+]
+
+[project.scripts]
+ci-assistant = "ci_assistant.main:main"
+
+[tool.setuptools.packages.find]
+include = ["ci_assistant*", "ci_analysis_demo*"]
+
+[tool.setuptools.package-data]
+ci_analysis_demo = [
+    "knowledge_docs/*.json",
+]
+ci_assistant = ["py.typed", "evaluation_cases.json"]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = [
+    "ci_assistant/tests",
+    "ci_analysis_demo/tests",
+]

@@ -1,0 +1,242 @@
+[
+  {
+    "id": "docs-001",
+    "title": "Python 构建中 ModuleNotFoundError 排查",
+    "content": "现象：CI 执行单元测试或启动脚本时报错 ModuleNotFoundError。排查步骤：1）确认报错模块名是否拼写正确；2）检查 requirements.txt/poetry.lock/pyproject.toml 是否声明该依赖；3）确认构建流程是否执行依赖安装，如 pip install -r requirements.txt；4）确认安装使用的 Python 解释器与执行测试使用的是同一个环境；5）如为项目内模块，检查 PYTHONPATH、包结构和相对导入是否正确；6）在 CI 中输出 pip list 和 python -V 辅助定位。常见根因：依赖未声明、依赖未安装到当前虚拟环境、工作目录不对、包路径错误。",
+    "source": "故障手册",
+    "category": "dependency",
+    "error_types": ["dependency_missing"],
+    "keywords": ["ModuleNotFoundError", "No module named", "requirements.txt", "pip install"],
+    "tags": ["python", "modulenotfounderror", "ci", "排查"]
+  },
+  {
+    "id": "docs-002",
+    "title": "pip install 失败常见 FAQ",
+    "content": "常见现象：pip install -r requirements.txt 失败。FAQ：1）网络超时或连接被拒绝，优先检查网络、代理、DNS 和 pip 源配置；2）依赖版本不存在，检查版本号是否写错或该版本是否已下架；3）Python 版本不兼容，例如依赖要求 Python>=3.10，而 CI 用的是 3.8；4）编译型依赖缺少系统库，如 gcc、musl-dev、libffi-dev、openssl-dev；5）私有源认证失败，需检查 index-url、extra-index-url 和凭证；6）wheel 构建失败时，先看是否缺少 build-essential 或 Rust 编译环境。",
+    "source": "常见错误FAQ",
+    "category": "dependency",
+    "error_types": ["dependency_missing", "dependency_conflict", "network_error"],
+    "keywords": ["pip install", "requirements.txt", "wheel", "Python version"],
+    "tags": ["pip", "install", "faq", "python"]
+  },
+  {
+    "id": "docs-003",
+    "title": "私有 PyPI 源认证失败排查",
+    "content": "现象：pip 安装私有包时报 401/403，或提示 Could not find a version that satisfies the requirement。排查步骤：1）确认私有源地址是否正确；2）检查用户名、token、password 是否过期；3）确认 CI 变量是否已注入，变量名是否拼写正确；4）避免日志中明文输出凭证，可先仅校验变量是否为空；5）检查 pip.conf、PIP_INDEX_URL、PIP_EXTRA_INDEX_URL 是否被后续步骤覆盖；6）如公司网络有限制，确认 runner 到私有制品仓库链路可达。根因常见为 token 失效、变量未注入、源地址配置错误。",
+    "source": "故障手册",
+    "category": "private_repo",
+    "error_types": ["repo_auth_failed", "permission_error"],
+    "keywords": ["401", "403", "private PyPI", "PIP_INDEX_URL", "token"],
+    "tags": ["pypi", "auth", "private-repo", "ci"]
+  },
+  {
+    "id": "docs-004",
+    "title": "pytest 收集失败 FAQ",
+    "content": "常见现象：pytest 在 collected 阶段报错，测试还没真正执行就失败。FAQ：1）测试文件命名不符合 pytest 默认规则，如 test_*.py；2）导入测试模块时触发异常，实际根因是模块导入失败；3）conftest.py 中 fixture 定义异常；4）测试目录缺少 __init__.py 导致导入路径混乱；5）插件冲突，如 pytest-asyncio、pytest-cov 版本不兼容；6）运行目录不正确，导致相对路径和导入失败。建议先执行 pytest -q --collect-only 观察收集阶段报错。",
+    "source": "常见错误FAQ",
+    "category": "test",
+    "error_types": ["test_failed", "dependency_missing"],
+    "keywords": ["pytest", "collection", "conftest.py", "collected 0 items"],
+    "tags": ["pytest", "collect", "faq", "python"]
+  },
+  {
+    "id": "docs-005",
+    "title": "Docker build 失败 FAQ",
+    "content": "常见现象：docker build 在某个 layer 失败。FAQ：1）基础镜像不存在或拉取失败；2）COPY 路径错误，构建上下文中没有目标文件；3）RUN 命令依赖网络，安装系统包或 pip 包时超时；4）Dockerfile 中工作目录不一致，导致文件找不到；5）多阶段构建中 stage 名字拼写错误；6）权限问题导致脚本不可执行。建议排查时重点看失败 layer 上方最后一条成功指令，并在本地最小复现。",
+    "source": "常见错误FAQ",
+    "category": "docker",
+    "error_types": ["docker_build_failed", "image_pull_failed", "network_error"],
+    "keywords": ["docker build", "COPY failed", "build context", "Dockerfile"],
+    "tags": ["docker", "build", "faq", "ci"]
+  },
+  {
+    "id": "docs-006",
+    "title": "镜像拉取失败 FAQ",
+    "content": "现象：CI 在拉取基础镜像或业务镜像时报错 pull access denied、manifest unknown、TLS handshake timeout。常见原因：1）镜像名或 tag 写错；2）私有仓库未登录；3）镜像已删除或 tag 被覆盖；4）节点到镜像仓库网络不通；5）证书或代理导致 TLS 失败；6）平台架构不匹配，如 arm64 节点拉 amd64 限制镜像。建议先在 runner 节点执行 docker login 和 docker pull 单独验证。",
+    "source": "常见错误FAQ",
+    "category": "docker",
+    "error_types": ["image_pull_failed", "repo_auth_failed", "network_error"],
+    "keywords": ["pull access denied", "manifest unknown", "TLS handshake timeout", "docker pull"],
+    "tags": ["docker", "image", "pull", "registry"]
+  },
+  {
+    "id": "docs-007",
+    "title": "构建阶段常见错误排查总流程",
+    "content": "推荐顺序：1）先定位失败阶段：代码拉取、依赖安装、编译构建、测试、制品上传、镜像构建；2）确认最近变更：代码、依赖版本、CI 配置、基础镜像、runner 环境；3）提取第一条关键报错，不要只看最后一行；4）判断错误类型：依赖、网络、权限、环境变量、路径、资源不足；5）做最小复现：本地容器或同版本 runner 环境执行同样命令；6）确认修复后补充防回归措施，如锁版本、补校验、加前置检查。",
+    "source": "故障手册",
+    "category": "manual",
+    "error_types": [],
+    "keywords": ["CI failure", "build stage", "root cause", "troubleshooting"],
+    "tags": ["ci", "build", "troubleshooting", "流程"]
+  },
+  {
+    "id": "docs-008",
+    "title": "Python 依赖问题排查步骤",
+    "content": "适用场景：pip install 失败、导入失败、运行时版本冲突。步骤：1）确认 Python 版本；2）输出 pip --version、python -V、which python；3）检查依赖文件是否存在冲突版本；4）确认是否混用了 requirements.txt 和 poetry/uv/pdm；5）检查是否存在未锁定版本导致今天成功、明天失败；6）如为编译型依赖，确认系统库和编译器完整；7）必要时用 pip freeze 与本地成功环境对比差异。",
+    "source": "故障手册",
+    "category": "dependency",
+    "error_types": ["dependency_missing", "dependency_conflict"],
+    "keywords": ["pip install", "ImportError", "dependency conflict", "pip freeze"],
+    "tags": ["python", "dependency", "manual", "pip"]
+  },
+  {
+    "id": "docs-009",
+    "title": "网络问题排查步骤",
+    "content": "适用场景：拉依赖超时、拉镜像失败、制品上传失败。步骤：1）确认 runner 所在网络出口和 DNS 是否正常；2）检查代理变量 HTTP_PROXY、HTTPS_PROXY、NO_PROXY；3）验证目标地址连通性，如 curl、ping、nslookup；4）如为私网服务，确认 VPN、专线或 VPC 路由是否生效；5）检查证书和 TLS 握手报错；6）区分偶发抖动和稳定失败，必要时引入重试策略；7）不要把认证失败误判成纯网络问题。",
+    "source": "故障手册",
+    "category": "network",
+    "error_types": ["network_error", "timeout"],
+    "keywords": ["timed out", "DNS", "proxy", "TLS", "connection refused"],
+    "tags": ["network", "proxy", "dns", "ci"]
+  },
+  {
+    "id": "docs-010",
+    "title": "环境变量缺失排查步骤",
+    "content": "现象：CI 中访问不到 token、数据库地址、镜像仓库凭证等。排查步骤：1）确认变量在项目/组/流水线层级是否存在；2）确认分支保护规则是否导致变量未注入；3）确认变量名大小写和脚本引用一致；4）确认 shell 是否对特殊字符做了解析；5）确认子进程、容器步骤是否继承环境变量；6）日志中避免直接打印敏感值，可打印是否为空和长度；7）检查变量是否在后续步骤被覆盖。",
+    "source": "故障手册",
+    "category": "env",
+    "error_types": ["env_config_error"],
+    "keywords": ["KeyError", "environment variable", "secret", "protected branch"],
+    "tags": ["env", "secret", "ci", "manual"]
+  },
+  {
+    "id": "docs-011",
+    "title": "Python 依赖缺失导致构建失败",
+    "content": "{\"title\":\"Python 依赖缺失导致构建失败\",\"error_type\":\"dependency_missing\",\"symptom\":\"ModuleNotFoundError: No module named requests\",\"root_cause\":\"requirements.txt 未包含 requests，且构建步骤未安装本地开发环境中的隐式依赖\",\"fix\":[\"补充 requirements.txt 并锁定版本\",\"确认构建流程执行 pip install -r requirements.txt\",\"增加导入自检或启动前 smoke test\"]}",
+    "source": "历史case",
+    "category": "case",
+    "error_types": ["dependency_missing"],
+    "keywords": ["ModuleNotFoundError", "requests", "requirements.txt", "pip install"],
+    "tags": ["case", "python", "dependency", "requests"]
+  },
+  {
+    "id": "docs-012",
+    "title": "私有源 token 过期导致安装失败",
+    "content": "{\"title\":\"私有源 token 过期导致安装失败\",\"error_type\":\"private_repo_auth_failed\",\"symptom\":\"ERROR: 401 Client Error 或 pip install 提示认证失败\",\"root_cause\":\"CI 中使用的私有 PyPI token 已过期，但变量仍保留旧值\",\"fix\":[\"更新 token 并验证权限\",\"在流水线前置步骤增加私有源连通和认证校验\",\"建立 token 轮换提醒机制\"]}",
+    "source": "历史case",
+    "category": "case",
+    "error_types": ["repo_auth_failed"],
+    "keywords": ["401", "private PyPI", "token expired", "authentication failed"],
+    "tags": ["case", "auth", "private-pypi", "token"]
+  },
+  {
+    "id": "docs-013",
+    "title": "pytest 收集阶段因 conftest 导入失败",
+    "content": "{\"title\":\"pytest 收集阶段因 conftest 导入失败\",\"error_type\":\"pytest_collection_error\",\"symptom\":\"pytest collected 0 items / errors during collection\",\"root_cause\":\"conftest.py 导入了仅本地存在的配置文件，CI 环境中缺失\",\"fix\":[\"将配置改为环境变量注入\",\"对 conftest 中的外部依赖做兜底处理\",\"增加 pytest --collect-only 检查步骤\"]}",
+    "source": "历史case",
+    "category": "case",
+    "error_types": ["test_failed", "dependency_missing"],
+    "keywords": ["pytest collection", "conftest.py", "collected 0 items", "import failed"],
+    "tags": ["case", "pytest", "conftest", "collection"]
+  },
+  {
+    "id": "docs-014",
+    "title": "Docker COPY 路径错误导致构建失败",
+    "content": "{\"title\":\"Docker COPY 路径错误导致构建失败\",\"error_type\":\"docker_copy_missing\",\"symptom\":\"COPY failed: file not found in build context\",\"root_cause\":\"Docker build 上下文设置为项目子目录，但 Dockerfile 中使用了根目录相对路径\",\"fix\":[\"统一构建上下文和 Dockerfile 路径约定\",\"在本地使用相同命令复现 docker build\",\"在 CI 中显式输出 pwd 和 ls 辅助排查\"]}",
+    "source": "历史case",
+    "category": "case",
+    "error_types": ["docker_build_failed"],
+    "keywords": ["COPY failed", "build context", "file not found", "Dockerfile"],
+    "tags": ["case", "docker", "copy", "build-context"]
+  },
+  {
+    "id": "docs-015",
+    "title": "基础镜像 tag 变更导致镜像拉取失败",
+    "content": "{\"title\":\"基础镜像 tag 变更导致镜像拉取失败\",\"error_type\":\"image_pull_failed\",\"symptom\":\"manifest unknown: manifest unknown\",\"root_cause\":\"Dockerfile 使用 latest 或未固定 tag，镜像仓库侧发生 tag 调整\",\"fix\":[\"固定基础镜像版本号\",\"建立基础镜像变更通知机制\",\"关键镜像提前缓存到内部仓库\"]}",
+    "source": "历史case",
+    "category": "case",
+    "error_types": ["image_pull_failed"],
+    "keywords": ["manifest unknown", "image tag", "docker pull", "latest"],
+    "tags": ["case", "docker", "image", "tag"]
+  },
+  {
+    "id": "docs-016",
+    "title": "环境变量缺失导致测试连接数据库失败",
+    "content": "{\"title\":\"环境变量缺失导致测试连接数据库失败\",\"error_type\":\"env_missing\",\"symptom\":\"KeyError: DB_HOST 或数据库连接串为空\",\"root_cause\":\"受保护变量只对 protected 分支生效，当前 MR 分支未注入\",\"fix\":[\"调整变量作用范围或为测试分支单独配置变量\",\"在测试前增加环境变量完整性校验\",\"为关键变量提供更明确的失败提示\"]}",
+    "source": "历史case",
+    "category": "case",
+    "error_types": ["env_config_error"],
+    "keywords": ["KeyError", "DB_HOST", "protected variable", "environment variable"],
+    "tags": ["case", "env", "database", "ci"]
+  },
+  {
+    "id": "docs-017",
+    "title": "Python 项目构建标准流程",
+    "content": "推荐流程：1）拉取代码并输出 commit sha；2）创建隔离环境，如 venv；3）升级 pip/setuptools/wheel；4）安装项目依赖和开发依赖；5）执行代码质量检查，如 ruff、flake8、mypy；6）执行单元测试和覆盖率；7）构建制品，如 wheel、sdist 或镜像；8）上传制品；9）保留日志、测试报告和覆盖率报告。要求：流程顺序稳定，环境可复现，依赖尽量锁版本。",
+    "source": "构建规范",
+    "category": "standard",
+    "error_types": [],
+    "keywords": ["Python build", "pip", "unit test", "wheel", "CI pipeline"],
+    "tags": ["python", "build", "standard", "ci"]
+  },
+  {
+    "id": "docs-018",
+    "title": "Python 项目安装依赖顺序规范",
+    "content": "规范建议：1）先安装基础构建工具 pip、setuptools、wheel；2）再安装锁定依赖文件；3）最后安装当前项目本身；4）测试工具依赖与运行时依赖尽量区分；5）避免在多个步骤重复安装同一批依赖；6）尽量使用锁文件，避免无上限版本；7）对私有依赖和公开依赖的源顺序要明确，避免解析混乱。",
+    "source": "构建规范",
+    "category": "standard",
+    "error_types": ["dependency_missing", "dependency_conflict"],
+    "keywords": ["requirements.txt", "lock file", "pip setuptools wheel", "dependency order"],
+    "tags": ["dependency", "python", "install", "standard"]
+  },
+  {
+    "id": "docs-019",
+    "title": "测试执行规范",
+    "content": "测试规范建议：1）区分单元测试、集成测试、端到端测试；2）默认在 CI 中至少执行单元测试；3）对慢测试和外部依赖测试做标记隔离；4）收集 junit 和 coverage 报告；5）pytest 参数显式化，如 -q、--maxfail、--disable-warnings；6）测试不得依赖本地机器状态；7）失败时输出足够上下文，便于复现。",
+    "source": "构建规范",
+    "category": "standard",
+    "error_types": ["test_failed"],
+    "keywords": ["pytest", "unit test", "junit", "coverage", "maxfail"],
+    "tags": ["test", "pytest", "coverage", "standard"]
+  },
+  {
+    "id": "docs-020",
+    "title": "缓存与镜像复用规范",
+    "content": "规范建议：1）依赖缓存基于锁文件 hash，而不是仅按分支缓存；2）镜像构建优先复用稳定 layer，如先 COPY requirements.txt 再安装依赖；3）不要缓存包含敏感信息的目录；4）缓存命中失败时构建仍应可继续；5）清晰区分 pip 缓存、构建缓存、Docker layer 缓存；6）基础镜像尽量固定版本，避免缓存污染和不可预期变化。",
+    "source": "构建规范",
+    "category": "standard",
+    "error_types": ["docker_build_failed", "dependency_conflict"],
+    "keywords": ["cache", "Docker layer", "lock file hash", "base image"],
+    "tags": ["cache", "docker", "layer", "standard"]
+  },
+  {
+    "id": "docs-021",
+    "title": "CI 中工作目录错误的典型症状",
+    "content": "现象：脚本本地可运行，CI 中提示文件不存在、模块无法导入、配置找不到。判断方法：1）在关键步骤输出 pwd；2）输出 ls -la；3）检查 CI 平台默认工作目录；4）确认脚本中的相对路径是相对于仓库根目录还是脚本目录；5）Docker build 时确认 context 与 Dockerfile 所在路径是否一致。根因常为 cd 切换后未切回、子任务默认目录不同。",
+    "source": "常见错误FAQ",
+    "category": "path",
+    "error_types": ["env_config_error", "docker_build_failed", "dependency_missing"],
+    "keywords": ["working directory", "file not found", "pwd", "PYTHONPATH", "build context"],
+    "tags": ["path", "workdir", "ci", "faq"]
+  },
+  {
+    "id": "docs-022",
+    "title": "依赖版本冲突导致测试失败",
+    "content": "{\"title\":\"依赖版本冲突导致测试失败\",\"error_type\":\"dependency_conflict\",\"symptom\":\"ImportError / TypeError，仅在 CI 新环境中出现\",\"root_cause\":\"requirements.txt 中未锁定上限版本，新发布的小版本引入不兼容变更\",\"fix\":[\"对关键依赖增加版本上限或锁文件\",\"建立定期升级而非被动漂移策略\",\"在安装后输出最终依赖树用于比对\"]}",
+    "source": "历史case",
+    "category": "case",
+    "error_types": ["dependency_conflict"],
+    "keywords": ["ImportError", "TypeError", "version conflict", "lock file"],
+    "tags": ["case", "dependency", "conflict", "python"]
+  },
+  {
+    "id": "docs-023",
+    "title": "Runner 磁盘空间不足导致构建异常",
+    "content": "{\"title\":\"Runner 磁盘空间不足导致构建异常\",\"error_type\":\"resource_exhausted\",\"symptom\":\"No space left on device 或 Docker build 中途失败\",\"root_cause\":\"历史镜像、缓存、临时文件未清理，runner 节点磁盘耗尽\",\"fix\":[\"增加磁盘监控和阈值告警\",\"定期清理无用镜像和缓存\",\"为大项目拆分制品目录并控制日志体积\"]}",
+    "source": "历史case",
+    "category": "case",
+    "error_types": ["resource_exhausted"],
+    "keywords": ["No space left on device", "disk full", "runner", "Docker build"],
+    "tags": ["case", "runner", "disk", "resource"]
+  },
+  {
+    "id": "docs-024",
+    "title": "CI 失败后的最小信息采集清单",
+    "content": "建议每次故障都至少采集：1）失败阶段；2）第一条关键报错；3）最近代码变更；4）最近 CI 配置变更；5）Python、pip、docker 等工具版本；6）依赖文件差异；7）是否为偶发、是否可重试恢复；8）执行节点信息；9）是否仅某分支或某 runner 失败。该清单有助于后续沉淀 FAQ 和历史 case。",
+    "source": "故障手册",
+    "category": "manual",
+    "error_types": [],
+    "keywords": ["CI failure", "first error", "recent changes", "runner", "incident context"],
+    "tags": ["ci", "incident", "checklist", "troubleshooting"]
+  }
+]

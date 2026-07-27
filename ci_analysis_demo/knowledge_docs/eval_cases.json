@@ -1,0 +1,292 @@
+[
+  {
+    "case_id": "case_001",
+    "log_text": "ModuleNotFoundError: No module named 'requests'",
+    "expected_error_type": "dependency_missing",
+    "expected_keywords": [
+      "requirements.txt",
+      "pip install",
+      "requests"
+    ],
+    "expected_reference_titles": [
+      "Python 构建中 ModuleNotFoundError 排查",
+      "Python 依赖缺失导致构建失败"
+    ],
+    "severity": "medium"
+  },
+  {
+    "case_id": "case_002",
+    "log_text": "ERROR: 403 Client Error: Forbidden for url: https://pypi.xxx/simple/internal-lib/",
+    "expected_error_type": "repo_auth_failed",
+    "expected_keywords": [
+      "token",
+      "认证",
+      "环境变量"
+    ],
+    "expected_reference_titles": [
+      "私有 PyPI 源认证失败排查",
+      "私有源 token 过期导致安装失败"
+    ],
+    "severity": "high"
+  },
+  {
+    "case_id": "case_003",
+    "log_text": "AssertionError: assert 500 == 200",
+    "expected_error_type": "test_failed",
+    "expected_keywords": [
+      "测试失败",
+      "断言",
+      "接口返回"
+    ],
+    "expected_reference_titles": [
+      "测试执行规范"
+    ],
+    "severity": "medium"
+  },
+  {
+    "case_id": "case_004",
+    "log_text": "ERROR: Could not find a version that satisfies the requirement internal-sdk==2.3.1",
+    "expected_error_type": "dependency_missing",
+    "expected_keywords": [
+      "版本不存在",
+      "依赖",
+      "pip install"
+    ],
+    "expected_reference_titles": [
+      "pip install 失败常见 FAQ",
+      "Python 依赖问题排查步骤"
+    ],
+    "severity": "high"
+  },
+  {
+    "case_id": "case_005",
+    "log_text": "ERROR: No matching distribution found for uvloop==0.19.0",
+    "expected_error_type": "dependency_missing",
+    "expected_keywords": [
+      "Python 版本",
+      "依赖版本",
+      "pip"
+    ],
+    "expected_reference_titles": [
+      "pip install 失败常见 FAQ",
+      "Python 依赖问题排查步骤"
+    ],
+    "severity": "medium"
+  },
+  {
+    "case_id": "case_006",
+    "log_text": "pytest collected 0 items / 1 error\nE   ImportError while loading conftest '/builds/demo/tests/conftest.py'",
+    "expected_error_type": "test_failed",
+    "expected_keywords": [
+      "pytest",
+      "conftest",
+      "收集失败"
+    ],
+    "expected_reference_titles": [
+      "pytest 收集失败 FAQ",
+      "pytest 收集阶段因 conftest 导入失败"
+    ],
+    "severity": "high"
+  },
+  {
+    "case_id": "case_007",
+    "log_text": "TimeoutError: Command 'pytest -q' timed out after 600 seconds",
+    "expected_error_type": "timeout",
+    "expected_keywords": [
+      "超时",
+      "pytest",
+      "重试"
+    ],
+    "expected_reference_titles": [
+      "构建阶段常见错误排查总流程"
+    ],
+    "severity": "medium"
+  },
+  {
+    "case_id": "case_008",
+    "log_text": "PermissionError: [Errno 13] Permission denied: '/builds/project/.venv/bin/pytest'",
+    "expected_error_type": "permission_error",
+    "expected_keywords": [
+      "权限",
+      "可执行",
+      "runner"
+    ],
+    "expected_reference_titles": [
+      "构建阶段常见错误排查总流程"
+    ],
+    "severity": "high"
+  },
+  {
+    "case_id": "case_009",
+    "log_text": "KeyError: 'DB_HOST'",
+    "expected_error_type": "env_config_error",
+    "expected_keywords": [
+      "环境变量",
+      "DB_HOST",
+      "配置缺失"
+    ],
+    "expected_reference_titles": [
+      "环境变量缺失排查步骤",
+      "环境变量缺失导致测试连接数据库失败"
+    ],
+    "severity": "high"
+  },
+  {
+    "case_id": "case_010",
+    "log_text": "requests.exceptions.ConnectTimeout: HTTPSConnectionPool(host='pypi.org', port=443): Max retries exceeded with url: /simple/pytest/",
+    "expected_error_type": "network_error",
+    "expected_keywords": [
+      "网络",
+      "超时",
+      "代理"
+    ],
+    "expected_reference_titles": [
+      "网络问题排查步骤",
+      "pip install 失败常见 FAQ"
+    ],
+    "severity": "high"
+  },
+  {
+    "case_id": "case_011",
+    "log_text": "docker build failed: COPY failed: file not found in build context or excluded by .dockerignore: stat requirements.txt: file does not exist",
+    "expected_error_type": "docker_build_failed",
+    "expected_keywords": [
+      "Docker build",
+      "COPY",
+      "build context"
+    ],
+    "expected_reference_titles": [
+      "Docker build 失败 FAQ",
+      "Docker COPY 路径错误导致构建失败"
+    ],
+    "severity": "high"
+  },
+  {
+    "case_id": "case_012",
+    "log_text": "failed to solve: python:3.11-slim: failed to resolve source metadata for docker.io/library/python:3.11-slim: pull access denied",
+    "expected_error_type": "image_pull_failed",
+    "expected_keywords": [
+      "镜像拉取",
+      "docker pull",
+      "registry"
+    ],
+    "expected_reference_titles": [
+      "镜像拉取失败 FAQ"
+    ],
+    "severity": "high"
+  },
+  {
+    "case_id": "case_013",
+    "log_text": "manifest unknown: manifest unknown for image registry.example.com/base/python:latest",
+    "expected_error_type": "image_pull_failed",
+    "expected_keywords": [
+      "manifest unknown",
+      "tag",
+      "镜像"
+    ],
+    "expected_reference_titles": [
+      "镜像拉取失败 FAQ",
+      "基础镜像 tag 变更导致镜像拉取失败"
+    ],
+    "severity": "high"
+  },
+  {
+    "case_id": "case_014",
+    "log_text": "ImportError: cannot import name 'router' from partially initialized module 'routers.analysis_ci' (most likely due to a circular import)",
+    "expected_error_type": "syntax_error",
+    "expected_keywords": [
+      "循环导入",
+      "import",
+      "模块初始化"
+    ],
+    "expected_reference_titles": [
+      "Python 构建中 ModuleNotFoundError 排查"
+    ],
+    "severity": "medium"
+  },
+  {
+    "case_id": "case_015",
+    "log_text": "ERROR: Job failed: execution took longer than 1h0m0s seconds",
+    "expected_error_type": "timeout",
+    "expected_keywords": [
+      "流水线超时",
+      "构建阶段",
+      "排查"
+    ],
+    "expected_reference_titles": [
+      "构建阶段常见错误排查总流程"
+    ],
+    "severity": "medium"
+  },
+  {
+    "case_id": "case_016",
+    "log_text": "No space left on device",
+    "expected_error_type": "resource_exhausted",
+    "expected_keywords": [
+      "磁盘空间",
+      "runner",
+      "缓存清理"
+    ],
+    "expected_reference_titles": [
+      "Runner 磁盘空间不足导致构建异常"
+    ],
+    "severity": "high"
+  },
+  {
+    "case_id": "case_017",
+    "log_text": "ERROR: Invalid requirement: 'fastapi=>0.110.0'",
+    "expected_error_type": "syntax_error",
+    "expected_keywords": [
+      "requirements.txt",
+      "语法错误",
+      "依赖格式"
+    ],
+    "expected_reference_titles": [
+      "pip install 失败常见 FAQ"
+    ],
+    "severity": "medium"
+  },
+  {
+    "case_id": "case_018",
+    "log_text": "FileNotFoundError: [Errno 2] No such file or directory: './config/settings-test.yaml'",
+    "expected_error_type": "env_config_error",
+    "expected_keywords": [
+      "工作目录",
+      "配置文件",
+      "路径"
+    ],
+    "expected_reference_titles": [
+      "CI 中工作目录错误的典型症状"
+    ],
+    "severity": "medium"
+  },
+  {
+    "case_id": "case_019",
+    "log_text": "TypeError: Client.**init**() got an unexpected keyword argument 'app'",
+    "expected_error_type": "dependency_conflict",
+    "expected_keywords": [
+      "依赖冲突",
+      "版本不兼容",
+      "锁版本"
+    ],
+    "expected_reference_titles": [
+      "依赖版本冲突导致测试失败",
+      "Python 依赖问题排查步骤"
+    ],
+    "severity": "high"
+  },
+  {
+    "case_id": "case_020",
+    "log_text": "urllib3.exceptions.SSLError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed",
+    "expected_error_type": "network_error",
+    "expected_keywords": [
+      "SSL",
+      "证书",
+      "网络"
+    ],
+    "expected_reference_titles": [
+      "网络问题排查步骤"
+    ],
+    "severity": "high"
+  }
+]

@@ -1,0 +1,87 @@
+services:
+  api:
+    build: .
+    command: uvicorn ci_assistant.main:app --host 0.0.0.0 --port 8080
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://ci_assistant:${POSTGRES_PASSWORD:-ci_assistant}@postgres:5432/ci_assistant
+      REDIS_URL: redis://redis:6379/0
+      CI_ASSISTANT__KNOWLEDGE__STORAGE_PATH: /var/lib/ci-assistant/knowledge
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health/ready')"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+    volumes:
+      - knowledge-data:/var/lib/ci-assistant/knowledge
+    restart: unless-stopped
+
+  worker:
+    build: .
+    command: celery -A ci_assistant.workers.celery_app:app worker --loglevel=INFO --queues=diagnosis,knowledge
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://ci_assistant:${POSTGRES_PASSWORD:-ci_assistant}@postgres:5432/ci_assistant
+      REDIS_URL: redis://redis:6379/0
+      CI_ASSISTANT__AI__PROVIDER: ${WORKER_AI_PROVIDER:-rule}
+      CI_ASSISTANT__KNOWLEDGE__STORAGE_PATH: /var/lib/ci-assistant/knowledge
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    volumes:
+      - knowledge-data:/var/lib/ci-assistant/knowledge
+    restart: unless-stopped
+
+  migrate:
+    build: .
+    command: alembic upgrade head
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://ci_assistant:${POSTGRES_PASSWORD:-ci_assistant}@postgres:5432/ci_assistant
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ci_assistant
+      POSTGRES_USER: ci_assistant
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ci_assistant}
+    ports:
+      - "15432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ci_assistant -d ci_assistant"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:
+  knowledge-data:

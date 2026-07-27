@@ -1,0 +1,21 @@
+[
+  {"provider":"gitlab","expected":"dependency_missing","log":"ModuleNotFoundError: No module named requests"},
+  {"provider":"gitlab","expected":"dependency_conflict","log":"ERROR: ResolutionImpossible dependency conflict"},
+  {"provider":"gitlab","expected":"test_failed","log":"AssertionError: tests failed"},
+  {"provider":"gitlab","expected":"repo_auth_failed","log":"remote returned 403 authentication failed"},
+  {"provider":"gitlab","expected":"timeout","log":"network operation timed out"},
+  {"provider":"gitlab","expected":"runner_unavailable","log":"runner unavailable for this job"},
+  {"provider":"gitlab","expected":"docker_build_failed","log":"Docker build failed at RUN step"},
+  {"provider":"gitlab","expected":"resource_exhausted","log":"fatal: out of memory"},
+  {"provider":"gitlab","expected":"unknown","log":"build stopped for an unfamiliar reason"},
+  {"provider":"jenkins","expected":"dependency_missing","log":"ModuleNotFoundError: No module named requests"},
+  {"provider":"jenkins","expected":"dependency_conflict","log":"ERROR: ResolutionImpossible dependency conflict"},
+  {"provider":"jenkins","expected":"test_failed","log":"AssertionError: tests failed"},
+  {"provider":"jenkins","expected":"repo_auth_failed","log":"remote returned 403 authentication failed"},
+  {"provider":"jenkins","expected":"timeout","log":"network operation timed out"},
+  {"provider":"jenkins","expected":"runner_unavailable","log":"no agent matches the requested label"},
+  {"provider":"jenkins","expected":"docker_build_failed","log":"Docker build failed at RUN step"},
+  {"provider":"jenkins","expected":"resource_exhausted","log":"fatal: no space left on device"},
+  {"provider":"jenkins","expected":"unknown","log":"build stopped for an unfamiliar reason"}
+]
+

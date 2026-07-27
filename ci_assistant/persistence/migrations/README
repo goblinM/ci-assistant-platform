@@ -1,0 +1,10 @@
+Alembic migration environment for CI Assistant.
+
+Create revisions with:
+
+    alembic revision --autogenerate -m "description"
+
+Apply all revisions with:
+
+    alembic upgrade head
+

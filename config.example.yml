@@ -1,0 +1,41 @@
+app:
+  environment: development
+  data_dir: data
+  host: 0.0.0.0
+  port: 8080
+  tenant_id: 00000000-0000-0000-0000-000000000001
+  tenant_name: Default Tenant
+  tenant_slug: default
+
+ai:
+  provider: openai_compatible
+  base_url: https://api.example.com/v1
+  model: your-model-name
+  timeout_seconds: 30
+  max_retries: 2
+
+ci:
+  connections:
+    - id: corp-gitlab
+      type: gitlab
+      base_url: https://gitlab.example.com
+      token_env: CORP_GITLAB_TOKEN
+      webhook_secret_env: CORP_GITLAB_WEBHOOK_SECRET
+    - id: build-jenkins
+      type: jenkins
+      base_url: https://jenkins.example.com
+      username_env: JENKINS_USERNAME
+      token_env: JENKINS_API_TOKEN
+
+database:
+  url: postgresql+asyncpg://ci_assistant:ci_assistant@postgres:5432/ci_assistant
+
+redis:
+  url: redis://redis:6379/0
+
+knowledge:
+  embedding_model: local-hashing-v1
+  embedding_dimension: 384
+  index_backend: faiss
+  storage_path: data/knowledge
+  context_max_chars: 6000

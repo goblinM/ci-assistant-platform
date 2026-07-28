@@ -18,7 +18,7 @@
 ## ADR-003：统一 CI Provider
 
 - 状态：已接受
-- 决策：诊断编排只依赖 `CIProvider`，GitLab/Jenkins 原始响应限制在 Adapter 内部。
+- 决策：诊断编排只依赖 `CIProvider`，GitLab/Jenkins/GitHub 原始响应限制在 Adapter 内部。
 - 原因：统一 Run、Job、Log、Change 和 Webhook 语义，避免业务层绑定单一 CI。
 
 ## ADR-004：默认只读和真实引用

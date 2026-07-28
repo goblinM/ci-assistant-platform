@@ -1,6 +1,6 @@
 # CI Assistant Platform
 
-可私有化部署的 CI 失败诊断平台。统一接入 GitLab 和 Jenkins，通过 PostgreSQL、
+可私有化部署的 CI 失败诊断平台。统一接入 GitLab、Jenkins 和 GitHub Actions，通过 PostgreSQL、
 Redis/Celery、版本化 FAISS 知识索引以及 OpenAI-compatible 或本地规则诊断网关，
 生成可追踪、带真实引用的结构化诊断。
 
@@ -25,7 +25,7 @@ Redis/Celery、版本化 FAISS 知识索引以及 OpenAI-compatible 或本地规
 ## 功能能力
 
 - `/api/v1/diagnoses/logs` 与 `/runs` 统一诊断入口
-- GitLab/Jenkins Provider、连接测试、只读工具和已验证 Webhook
+- GitLab/Jenkins/GitHub Actions Provider、连接测试、只读工具和已验证 Webhook
 - PostgreSQL 业务持久化、Redis/Celery 异步任务与 Alembic 迁移
 - Markdown/JSON 知识上传、确定性本地 Embedding、版本化 FAISS 原子发布
 - tenant/project/provider ACL 混合检索与真实 references
@@ -65,7 +65,7 @@ ci-assistant-platform/
 │   ├── diagnosis/             # 日志预处理和诊断编排
 │   ├── knowledge/             # 文档处理、混合检索和 FAISS 索引
 │   ├── persistence/           # SQLAlchemy、Repository 和 Alembic
-│   ├── providers/             # GitLab/Jenkins Provider
+│   ├── providers/             # GitLab/Jenkins/GitHub Actions Provider
 │   ├── tools/                 # Provider-aware 只读工具
 │   └── workers/               # Celery 诊断与知识任务
 ├── ci_analysis_demo/          # 旧 API 兼容包，仅维护兼容性
@@ -219,9 +219,9 @@ make eval-rag
 
 ## 产品边界
 
-0.5.0 默认只分析和建议，不自动修改代码或重跑 Pipeline。部署方仍需提供最小权限
-CI Token、TLS、网络出口策略、备份、镜像扫描和 API Key 轮换。GitHub Actions、
-Web 管理页、自动评论和人工审批后的写操作属于后续版本。
+0.6.0 默认只分析和建议，不自动修改代码或重跑 Pipeline。部署方仍需提供最小权限
+CI Token、TLS、网络出口策略、备份、镜像扫描和 API Key 轮换。Web 管理页、自动评论和
+人工审批后的写操作属于后续版本。
 
 完整设计见 [产品化设计](docs/productization_design.md)。
 
@@ -252,5 +252,6 @@ Web 管理页、自动评论和人工审批后的写操作属于后续版本。
 
 - 增加用户反馈入口，沉淀 accepted/rejected/helpful 标签。
 - 引入 reranker 和 embedding cache，提高 RAG 命中率和性能。
-- 接入 GitHub Actions Provider 和更多知识文档格式。
+- 接入 PDF、DOCX、HTML 等更多知识文档格式。
+- 引入可配置且可降级的 Cross-Encoder/BGE Reranker。
 - 在人工审批边界内增加评论、Issue 和 Pipeline 重跑动作。

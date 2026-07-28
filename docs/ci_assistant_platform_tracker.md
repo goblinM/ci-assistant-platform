@@ -1,8 +1,8 @@
 # CI 智能诊断平台开发跟进
 
-> 最后更新：2026-07-25  
-> 当前阶段：M5 MVP 验收完成  
-> 目标版本：`0.5.0`
+> 最后更新：2026-07-28
+> 当前阶段：M6 GitHub Actions Provider 完成
+> 目标版本：`0.6.0`
 
 ## 1. 状态说明
 
@@ -31,6 +31,7 @@
 | 结构化诊断 | 已完成 | OpenAI-compatible/规则网关、Pydantic 校验和 fallback |
 | GitLab Provider | 已完成 | Run、Job、Trace、Change、Webhook 与 Capability |
 | Jenkins Provider | 已完成 | 普通/嵌套 Job、Build、Console、Changeset 与 Webhook |
+| GitHub Actions Provider | 已完成 | Workflow Run、Job、日志、Head Commit、Webhook 与统一契约 |
 | 只读 Tool 策略 | 已完成 | Capability、参数模型、项目允许列表和调用上限 |
 | PostgreSQL/Alembic | 已完成 | 核心、知识和评测实体持久化 |
 | Redis/Celery | 已完成 | diagnosis/knowledge 隔离队列、重试和 late ack |
@@ -52,6 +53,7 @@
 | M3 Jenkins Provider | Jenkins 通过统一 Provider 完成诊断 | 已完成 |
 | M4 知识平台 | 私有知识可上传、索引、检索和删除 | 已完成 |
 | M5 MVP 验收 | Docker Compose、测试、评测、安全文档完成 | 已完成 |
+| M6 GitHub Actions | GitHub Actions 进入统一只读 Provider 链路 | 已完成 |
 
 ## 4. M0 设计冻结
 
@@ -142,11 +144,21 @@
 | M5-09 | 知识文档规范 | 已完成 | M4 | `knowledge_document_format.md` 提供 Markdown/JSON 模板 |
 | M5-10 | MVP 验收报告 | 已完成 | 全部 | `mvp_acceptance_report.md` 记录 DoD 和实际证据 |
 
-## 10. 后置事项
+## 10. M6 GitHub Actions Provider
+
+| ID | 事项 | 状态 | 依赖 | 完成标准 |
+| --- | --- | --- | --- | --- |
+| M6-01 | GitHub Actions Client | 已完成 | M2 | Workflow Run、Job、日志和 Commit 只读 REST API |
+| M6-02 | GitHub Provider 映射 | 已完成 | M6-01 | 统一 Run、Job、Log、Change 和状态映射 |
+| M6-03 | GitHub Webhook | 已完成 | M1、M6-02 | HMAC-SHA256 验签、Run/Job 事件和重跑幂等标识 |
+| M6-04 | Provider Manager 接线 | 已完成 | M6-02 | 配置、短期 Token 和共享 Secret 注入 |
+| M6-05 | 三 Provider 契约 | 已完成 | M6-02 | GitLab、Jenkins、GitHub 返回相同统一领域模型 |
+
+## 11. 后置事项
 
 | 事项 | 状态 | 目标版本 |
 | --- | --- | --- |
-| GitHub Actions Provider | 后置 | `0.6.x` |
+| GitHub Actions Provider | 已完成 | `0.6.0` |
 | PDF/DOCX/HTML 入库 | 后置 | `0.6.x` |
 | 模型 Reranker | 后置 | `0.6.x` |
 | Web 管理页面 | 后置 | `0.6.x` |
@@ -154,7 +166,7 @@
 | 人工审批后重跑 | 后置 | `1.0` 前 |
 | Helm 和高可用部署 | 后置 | `1.0` 前 |
 
-## 11. 变更记录
+## 12. 变更记录
 
 | 日期 | 变更 | 结果 |
 | --- | --- | --- |
@@ -168,10 +180,12 @@
 | 2026-07-25 | 完成 M2 和 M3 Provider 迁移 | 完成 Provider-aware Tools、Webhook 幂等、通用 Run API、Jenkins 全读链路及跨 Provider 契约；38 项测试通过 |
 | 2026-07-25 | 完成 M4 知识平台和诊断接线 | 文档异步入库、版本化 FAISS、ACL 混合检索、真实引用及删除后零召回闭环通过 |
 | 2026-07-25 | 完成 M5 容器验收 | 58 项测试、18 Case 固定评测、五服务 Compose、性能/安全/非 root/持久卷验证通过 |
+| 2026-07-28 | 完成 M6 GitHub Actions Provider | Run、Job、日志、Head Commit、HMAC Webhook 和三 Provider 契约测试通过 |
 
-## 12. 下一步
+## 13. 下一步
 
-M0–M5 架构迁移已完成。后续进入 `0.6.x` 增强路线；旧
+M0–M6 架构迁移及 GitHub Actions 只读接入已完成。后续继续 `0.6.x` 文档解析与
+Reranker 增强路线；旧
 `ci_analysis_demo` 仅作为兼容包保留，新服务入口和默认运行链路均为 `ci_assistant`。
 
 相关文档：

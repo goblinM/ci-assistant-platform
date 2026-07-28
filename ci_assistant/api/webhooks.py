@@ -15,6 +15,7 @@ router = APIRouter(prefix="/api/v1/webhooks", tags=["webhooks"])
 
 @router.post("/{connection_id}/gitlab", status_code=202)
 @router.post("/{connection_id}/jenkins", status_code=202)
+@router.post("/{connection_id}/github", status_code=202)
 async def receive_ci_webhook(
     connection_id: str,
     request: Request,

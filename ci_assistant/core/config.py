@@ -39,7 +39,7 @@ class CIConnectionConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: str = Field(min_length=1)
-    type: Literal["gitlab", "jenkins"]
+    type: Literal["gitlab", "jenkins", "github"]
     base_url: str
     token_env: str
     username_env: str | None = None

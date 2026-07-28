@@ -40,6 +40,9 @@ curl -X POST http://127.0.0.1:8080/api/v1/diagnoses/runs \
 Jenkins 使用相同接口，将 `connection_id` 指向 Jenkins 连接，`project_ref` 可使用
 `folder/subfolder/job-name`。
 
+GitHub Actions 同样使用该接口，`connection_id` 指向 GitHub 连接，`project_ref` 使用
+`owner/repository`，`run_id` 使用 Workflow Run ID。
+
 ## 连接
 
 ```bash
@@ -91,9 +94,16 @@ curl -X POST http://127.0.0.1:8080/api/v1/webhooks/main-gitlab/gitlab \
   -d @gitlab-event.json
 
 curl -X POST http://127.0.0.1:8080/api/v1/webhooks/main-jenkins/jenkins \
-  -H "X-CI-Webhook-Token: ${JENKINS_WEBHOOK_SECRET}" \
+  -H "X-Jenkins-Token: ${JENKINS_WEBHOOK_SECRET}" \
   -H "Content-Type: application/json" \
   -d @jenkins-event.json
+
+# GitHub 应由 GitHub 使用原始请求体生成 X-Hub-Signature-256；
+# 下列命令只展示端点，不能用未签名的手工请求替代真实验签。
+curl -X POST http://127.0.0.1:8080/api/v1/webhooks/github-actions/github \
+  -H "X-Hub-Signature-256: sha256=SIGNATURE" \
+  -H "Content-Type: application/json" \
+  --data-binary @github-workflow-run-event.json
 ```
 
 重复事件由数据库唯一键幂等处理。交互式完整 Schema 可查看 `/docs`。

@@ -6,6 +6,8 @@ from collections.abc import Mapping
 from ci_assistant.core.config import PlatformSettings
 
 from .base import CIProvider
+from .github.client import GitHubClient
+from .github.provider import GitHubProvider
 from .gitlab.client import GitLabClient
 from .gitlab.provider import GitLabProvider
 from .jenkins.client import JenkinsClient
@@ -74,6 +76,22 @@ def build_provider_manager(
             providers[connection.id] = JenkinsProvider(
                 connection.id,
                 JenkinsClient(connection.base_url, username, token),
+                webhook_secret=webhook_secret,
+            )
+        elif connection.type == "github":
+            token = environment.get(connection.token_env, "")
+            if not token:
+                raise ValueError(
+                    f"missing credential environment variable: {connection.token_env}"
+                )
+            webhook_secret = (
+                environment.get(connection.webhook_secret_env, "")
+                if connection.webhook_secret_env
+                else None
+            )
+            providers[connection.id] = GitHubProvider(
+                connection.id,
+                GitHubClient(connection.base_url, token),
                 webhook_secret=webhook_secret,
             )
         else:

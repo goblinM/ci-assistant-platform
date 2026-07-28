@@ -15,7 +15,7 @@
 | 知识测试 | Chunk、Secret Mask、FAISS 原子发布和 ACL | `test_knowledge_processing.py`、`test_knowledge_index.py` | 否 |
 | 安全与降级 | 租户鉴权、Prompt 边界、RAG/模型失败 | `test_auth.py`、`test_security_controls.py`、`test_orchestrator.py` | 否 |
 | Compose E2E | API、Worker、PostgreSQL、Redis、FAISS 实际闭环 | `docs/mvp_acceptance_report.md` 中的验收步骤 | 是 |
-| 外部 Provider | 真实 GitLab/Jenkins 权限、网络和兼容性 | 部署环境连接测试 | 是 |
+| 外部 Provider | 真实 GitLab/Jenkins/GitHub 权限、网络和兼容性 | 部署环境连接测试 | 是 |
 
 默认完整测试：
 
@@ -92,7 +92,7 @@ pytest -q \
 每次交付只记录实际执行的命令和结果，并明确：
 
 - 是否启动外部服务。
-- 是否使用真实 GitLab/Jenkins。
+- 是否使用真实 GitLab/Jenkins/GitHub。
 - 是否调用外部模型。
 - 是否运行完整测试集。
 - 失败、跳过和无法验证的项目。

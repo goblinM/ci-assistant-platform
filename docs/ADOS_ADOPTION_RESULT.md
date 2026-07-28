@@ -201,3 +201,36 @@ Docstring 之外的 AST 变化为 0。
 
 唯一警告仍为 FastAPI TestClient 对当前 Starlette 适配层的弃用提示，与本次 Docstring
 治理无关。未启动应用、数据库、Worker 或外部 Provider。
+
+## 0.6.0 GitHub Actions Provider
+
+> 执行日期：2026-07-28
+> 基线：`36fd1c1`
+
+### 实施内容
+
+- 新增只读 GitHub Actions Client 和 Provider，覆盖 Workflow Run、Job、Job Log 与
+  Head Commit。
+- 将 GitHub 状态和结论映射到现有统一 `RunStatus`，没有修改 `CIProvider` Protocol。
+- 支持 `workflow_run` 和 `workflow_job` Webhook；使用原始请求体校验
+  `X-Hub-Signature-256` HMAC-SHA256。
+- 将 Run Attempt、Action 和对象 ID 纳入外部事件标识，保持重投幂等并区分重跑。
+- 配置和 Provider Manager 增加 `github` 类型；推荐注入短期 GitHub App Installation
+  Token。
+- 知识文档 Provider ACL 增加 `github` 枚举值，复用现有 PostgreSQL 和 FAISS 过滤结构。
+- 版本更新为 0.6.0，并同步 README、架构、安全、API 示例和开发跟踪文档。
+
+本次没有新增依赖、数据库迁移或写操作，没有修改公开诊断 API、知识索引格式和旧兼容包。
+没有实现 Workflow 重跑、取消、评论或 Check 写入。
+
+### 验证结果
+
+- GitHub/Provider/配置/安全专项测试：`18 passed, 1 warning in 0.98s`。
+- 完整回归：`69 passed, 1 warning in 5.57s`。
+- `python3 -m compileall -q ci_assistant ci_analysis_demo`：通过。
+- ADOS 静态扫描：`missing_public_docstrings = 0`。
+- ADOS `validate_adoption.py`：`Passed`，无 warning、无 failure。
+- `git diff --check`：通过。
+
+唯一警告仍为 FastAPI TestClient 对当前 Starlette 适配层的弃用提示。验证使用 Mock
+Provider 数据，没有连接真实 GitHub 或触发外部 Workflow。

@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 class CreateKnowledgeDocument(BaseModel):
     tenant_id: UUID
     project_id: UUID | None = None
-    provider: Literal["gitlab", "jenkins"] | None = None
+    provider: Literal["gitlab", "jenkins", "github"] | None = None
     title: str = Field(min_length=1, max_length=500)
     format: Literal["markdown", "json"]
     content: str = Field(min_length=1, max_length=5_000_000)
@@ -30,4 +30,3 @@ class KnowledgeDocumentView(BaseModel):
     content_hash: str
     version: int
     status: str
-

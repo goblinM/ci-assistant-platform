@@ -26,6 +26,11 @@ ci:
       base_url: https://jenkins.example.com
       username_env: JENKINS_USERNAME
       token_env: JENKINS_API_TOKEN
+    - id: github-actions
+      type: github
+      base_url: https://api.github.com
+      token_env: GITHUB_APP_TOKEN
+      webhook_secret_env: GITHUB_WEBHOOK_SECRET
 
 database:
   url: postgresql+asyncpg://ci_assistant:ci_assistant@postgres:5432/ci_assistant

@@ -9,6 +9,13 @@
 - 补充 PostgreSQL/FAISS 备份恢复和治理说明。
 - 完成 256 处公共函数中文 Docstring 专项治理，静态扫描缺口归零。
 
+## 0.6.0 — 2026-07-28
+
+- 增加只读 GitHub Actions Provider，覆盖 Workflow Run、Job、日志、Head Commit 和
+  `workflow_run`/`workflow_job` Webhook。
+- GitHub Webhook 使用 HMAC-SHA256 验签，连接支持 GitHub App Installation Token。
+- GitLab、Jenkins 和 GitHub Actions 继续共享统一 Provider 契约与只读 Tool。
+
 ## 0.5.0 — 2026-07-25
 
 - 完成 `ci_assistant` 主平台包和 `ci-analysis-platform` 发行配置。

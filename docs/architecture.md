@@ -1,6 +1,6 @@
 # CI Assistant Platform 架构
 
-本文描述 `ci_assistant` 0.5.0 的实际运行架构。旧包 `ci_analysis_demo` 只承担兼容职责，
+本文描述 `ci_assistant` 0.6.0 的实际运行架构。旧包 `ci_analysis_demo` 只承担兼容职责，
 不再作为新功能的目标架构。
 
 ## 系统数据流
@@ -53,7 +53,7 @@ Docker Compose 定义 `api`、`worker`、`migrate`、`postgres` 和 `redis` 五�
 | --- | --- |
 | `ci_assistant/api/` | API、鉴权、错误 Envelope、健康检查和 Prometheus 指标 |
 | `ci_assistant/domain/` | CI 与 Tool 领域模型 |
-| `ci_assistant/providers/` | Provider Protocol、Registry、GitLab 和 Jenkins Adapter |
+| `ci_assistant/providers/` | Provider Protocol、Registry、GitLab、Jenkins 和 GitHub Actions Adapter |
 | `ci_assistant/diagnosis/` | 日志脱敏、关键片段提取和诊断编排 |
 | `ci_assistant/llm/` | OpenAI-compatible 与规则诊断网关 |
 | `ci_assistant/knowledge/` | 文档处理、Embedding、混合检索和 FAISS 发布 |
@@ -65,7 +65,7 @@ Docker Compose 定义 `api`、`worker`、`migrate`、`postgres` 和 `redis` 五�
 
 ### Provider 边界
 
-业务编排只依赖统一 `CIProvider`，不直接消费 GitLab/Jenkins 原始响应。Provider 负责状态、
+业务编排只依赖统一 `CIProvider`，不直接消费 GitLab/Jenkins/GitHub 原始响应。Provider 负责状态、
 Run、Job、Log、Change 和 Webhook 的统一映射，并通过 Capability 声明可用读能力。
 
 ### 诊断边界
@@ -82,8 +82,9 @@ tenant/project/provider 过滤条件。引用由真实检索结果覆盖，模�
 ### 安全边界
 
 - 生产 API Key 绑定租户，管理连接只允许管理员 Key。
-- GitLab/Jenkins Webhook 必须验证共享 Secret。
-- 默认 Tool 全部只读；写操作不属于 0.5.0 自动执行范围。
+- GitLab/Jenkins Webhook 必须验证共享 Secret；GitHub Webhook 必须验证
+  `X-Hub-Signature-256` HMAC-SHA256。
+- 默认 Tool 全部只读；写操作不属于 0.6.0 自动执行范围。
 - 容器使用非 root 用户。
 - PostgreSQL 的本地调试端口只绑定 `127.0.0.1`，生产密码不允许使用 Compose 默认值。
 

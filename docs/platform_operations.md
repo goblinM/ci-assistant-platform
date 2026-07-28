@@ -4,7 +4,7 @@
 
 1. 复制 `.env.example` 为 `.env`，设置数据库密码、模型、CI Token、Webhook Secret 和
    `API_KEYS_JSON`。
-2. 复制 `config.example.yml` 为 `config.yml`，配置 GitLab/Jenkins 连接。
+2. 复制 `config.example.yml` 为 `config.yml`，配置 GitLab/Jenkins/GitHub 连接。
 3. 执行 `docker-compose up -d --build`。
 4. 检查 `GET /health/ready`，必须同时返回 database/redis 为 `ok`。
 5. 使用 `docker-compose logs migrate` 确认 Alembic 到达 head。

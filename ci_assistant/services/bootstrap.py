@@ -11,6 +11,7 @@ async def sync_configuration(
     session: AsyncSession,
     settings: PlatformSettings,
 ) -> None:
+    """执行 ``sync_configuration`` 对应的领域操作。"""
     tenant = await session.get(Tenant, settings.app.tenant_id)
     if tenant is None:
         tenant = Tenant(

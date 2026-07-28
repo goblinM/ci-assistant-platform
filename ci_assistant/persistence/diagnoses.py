@@ -15,12 +15,14 @@ class DiagnosisRepository(Repository[Diagnosis]):
         super().__init__(session, Diagnosis)
 
     async def get_by_trace_id(self, trace_id: str) -> Diagnosis | None:
+        """获取 ``get_by_trace_id`` 对应的数据。"""
         result = await self.session.execute(
             select(Diagnosis).where(Diagnosis.trace_id == trace_id)
         )
         return result.scalar_one_or_none()
 
     async def mark_running(self, diagnosis: Diagnosis) -> None:
+        """更新 ``mark_running`` 对应的状态。"""
         diagnosis.status = "running"
         await self.session.flush()
 
@@ -34,6 +36,7 @@ class DiagnosisRepository(Repository[Diagnosis]):
         model_name: str | None = None,
         index_version: str | None = None,
     ) -> AnalysisTrace:
+        """更新 ``mark_succeeded`` 对应的状态。"""
         diagnosis.status = "succeeded"
         diagnosis.result = result
         analysis_trace = AnalysisTrace(
@@ -48,6 +51,7 @@ class DiagnosisRepository(Repository[Diagnosis]):
         return analysis_trace
 
     async def mark_failed(self, diagnosis: Diagnosis, error_code: str) -> None:
+        """更新 ``mark_failed`` 对应的状态。"""
         diagnosis.status = "failed"
         diagnosis.error_code = error_code
         await self.session.flush()

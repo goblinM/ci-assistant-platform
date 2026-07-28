@@ -176,6 +176,7 @@ async def query_recent_commits(
 
 
 def trim_tool_result(tool_name: str, data: dict, max_cases: int = 3) -> dict | None:
+    """执行 ``trim_tool_result`` 对应的领域操作。"""
     if tool_name == "query_failure_history":
         recent_cases = data.get("recent_cases", [])
         return {

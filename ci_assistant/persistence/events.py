@@ -24,6 +24,7 @@ class CIEventRepository:
         event_type: str,
         payload: dict[str, Any],
     ) -> tuple[UUID | None, bool]:
+        """创建 ``create_once`` 对应的领域对象或结果。"""
         now = utc_now()
         statement = (
             insert(CIEvent)

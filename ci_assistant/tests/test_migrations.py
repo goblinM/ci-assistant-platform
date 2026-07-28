@@ -6,6 +6,7 @@ from ci_assistant.persistence.models import Base
 
 
 def test_core_entities_are_registered_in_metadata() -> None:
+    """验证 ``test_core_entities_are_registered_in_metadata`` 所描述的预期行为。"""
     assert {
         "tenants",
         "ci_connections",
@@ -17,6 +18,7 @@ def test_core_entities_are_registered_in_metadata() -> None:
 
 
 def test_initial_migration_has_revision_metadata() -> None:
+    """验证 ``test_initial_migration_has_revision_metadata`` 所描述的预期行为。"""
     migration = (
         Path(__file__).parents[1]
         / "persistence"

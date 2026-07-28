@@ -36,25 +36,31 @@ class GitLabClient:
         return response
 
     async def get_project(self, project_ref: str) -> dict:
+        """获取 ``get_project`` 对应的数据。"""
         return (await self._get(f"/api/v4/projects/{quote(project_ref, safe='')}")).json()
 
     async def get_pipeline(self, project_ref: str, run_id: str) -> dict:
+        """获取 ``get_pipeline`` 对应的数据。"""
         project = quote(project_ref, safe="")
         return (await self._get(f"/api/v4/projects/{project}/pipelines/{run_id}")).json()
 
     async def list_pipeline_jobs(self, project_ref: str, run_id: str) -> list[dict]:
+        """列出 ``list_pipeline_jobs`` 对应的数据。"""
         project = quote(project_ref, safe="")
         return (await self._get(f"/api/v4/projects/{project}/pipelines/{run_id}/jobs")).json()
 
     async def get_job(self, project_ref: str, job_id: str) -> dict:
+        """获取 ``get_job`` 对应的数据。"""
         project = quote(project_ref, safe="")
         return (await self._get(f"/api/v4/projects/{project}/jobs/{job_id}")).json()
 
     async def get_job_trace(self, project_ref: str, job_id: str) -> str:
+        """获取 ``get_job_trace`` 对应的数据。"""
         project = quote(project_ref, safe="")
         return (await self._get(f"/api/v4/projects/{project}/jobs/{job_id}/trace")).text
 
     async def list_commits(self, project_ref: str, ref_name: str | None = None) -> list[dict]:
+        """列出 ``list_commits`` 对应的数据。"""
         project = quote(project_ref, safe="")
         params = {"ref_name": ref_name} if ref_name else None
         return (await self._get(f"/api/v4/projects/{project}/repository/commits", params)).json()

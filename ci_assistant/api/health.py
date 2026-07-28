@@ -22,14 +22,17 @@ def _envelope(request: Request, data: dict[str, Any]) -> dict[str, Any]:
 
 @router.get("/health/live")
 async def live(request: Request) -> dict[str, Any]:
+    """检查 ``live`` 对应的就绪状态。"""
     return _envelope(request, {"status": "ok"})
 
 
 @router.get("/health/ready")
 async def ready(request: Request) -> JSONResponse:
+    """检查 ``ready`` 对应的就绪状态。"""
     checks: Mapping[str, ReadinessCheck] = getattr(request.app.state, "readiness_checks", {})
 
     async def run_check(name: str, check: ReadinessCheck) -> tuple[str, str]:
+        """检查 ``run_check`` 对应的就绪状态。"""
         try:
             await asyncio.wait_for(check(), timeout=2)
             return name, "ok"

@@ -17,6 +17,7 @@ class ProviderToolExecutor:
         text: str = "",
         allowed_tools: set[str] | None = None,
     ) -> list[ToolSpec]:
+        """执行 ``candidates`` 对应的领域操作。"""
         normalized = text.lower()
         candidates = []
         for spec in self._specs.values():
@@ -40,6 +41,7 @@ class ProviderToolExecutor:
         *,
         allowed_tools: set[str] | None = None,
     ) -> dict[str, Any]:
+        """执行 ``execute`` 对应的领域操作。"""
         try:
             spec = self._specs[name]
         except KeyError as exc:

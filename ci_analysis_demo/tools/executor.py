@@ -158,6 +158,7 @@ class ToolsExecutor:
             allowed_providers: list[str] | None = None,
             max_tools: int = 8,
     ) -> list[str]:
+        """列出 ``list_tools`` 对应的数据。"""
         return [
             spec.name
             for spec in self._select_tools(

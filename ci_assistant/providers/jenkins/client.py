@@ -12,6 +12,7 @@ from ci_assistant.providers.base import (
 
 
 def job_path(project_ref: str) -> str:
+    """执行 ``job_path`` 对应的领域操作。"""
     parts = [part for part in project_ref.split("/") if part]
     return "".join(f"/job/{quote(part, safe='')}" for part in parts)
 
@@ -47,6 +48,7 @@ class JenkinsClient:
         return response
 
     async def get_server(self) -> dict:
+        """获取 ``get_server`` 对应的数据。"""
         response = await self._get("/api/json")
         return {
             **response.json(),
@@ -54,12 +56,14 @@ class JenkinsClient:
         }
 
     async def get_build(self, project_ref: str, build_id: str) -> dict:
+        """获取 ``get_build`` 对应的数据。"""
         response = await self._get(
             f"{job_path(project_ref)}/{quote(build_id, safe='')}/api/json"
         )
         return response.json()
 
     async def get_console(self, project_ref: str, build_id: str) -> str:
+        """获取 ``get_console`` 对应的数据。"""
         return (
             await self._get(
                 f"{job_path(project_ref)}/{quote(build_id, safe='')}/consoleText"

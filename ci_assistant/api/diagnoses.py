@@ -35,6 +35,7 @@ async def create_log_diagnosis(
     request: Request,
     session: AsyncSession = Depends(get_session),
 ):
+    """创建 ``create_log_diagnosis`` 对应的领域对象或结果。"""
     enforce_tenant(request, payload.tenant_id)
     repository = DiagnosisRepository(session)
     diagnosis = Diagnosis(
@@ -68,6 +69,7 @@ async def create_run_diagnosis(
     request: Request,
     session: AsyncSession = Depends(get_session),
 ):
+    """创建 ``create_run_diagnosis`` 对应的领域对象或结果。"""
     connection = await CIConnectionRepository(session).get_by_external_id(
         payload.connection_id
     )
@@ -119,6 +121,7 @@ async def get_diagnosis(
     request: Request,
     session: AsyncSession = Depends(get_session),
 ):
+    """获取 ``get_diagnosis`` 对应的数据。"""
     diagnosis = await DiagnosisRepository(session).get(diagnosis_id)
     if diagnosis is None:
         raise PlatformError(

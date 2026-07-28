@@ -5,6 +5,7 @@ TODO: 后续这里还可以优化
 
 
 def fallback_rule_analysis(log_text: str) -> dict:
+    """执行 ``fallback_rule_analysis`` 对应的 CI 故障诊断。"""
     lower = log_text.lower()
 
     if "modulenotfounderror" in lower:

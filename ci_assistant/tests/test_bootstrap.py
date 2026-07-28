@@ -6,6 +6,7 @@ from ci_assistant.services.bootstrap import sync_configuration
 
 
 def test_bootstrap_creates_default_tenant_without_secrets() -> None:
+    """验证 ``test_bootstrap_creates_default_tenant_without_secrets`` 所描述的预期行为。"""
     session = MagicMock()
     session.get = AsyncMock(return_value=None)
     session.flush = AsyncMock()

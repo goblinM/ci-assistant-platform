@@ -18,6 +18,7 @@ class HashingEmbedder:
         *,
         normalize_embeddings: bool = True,
     ) -> np.ndarray:
+        """执行 ``encode`` 对应的向量计算。"""
         matrix = np.zeros((len(texts), self.dimension), dtype="float32")
         for row, text in enumerate(texts):
             for token in re.findall(r"[\w.-]+", text.lower()):
@@ -31,5 +32,6 @@ class HashingEmbedder:
         return matrix
 
     def get_sentence_embedding_dimension(self) -> int:
+        """获取 ``get_sentence_embedding_dimension`` 对应的数据。"""
         return self.dimension
 

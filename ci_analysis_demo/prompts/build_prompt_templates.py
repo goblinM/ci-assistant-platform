@@ -94,6 +94,7 @@ def build_final_diagnosis_prompt(
     tool_results: list[dict],
     max_context_chars: int | None = None,
 ) -> str:
+    """创建 ``build_final_diagnosis_prompt`` 对应的领域对象或结果。"""
     knowledge_context = _build_knowledge_context(retrieved_docs, max_context_chars)
 
     tool_context = json.dumps(

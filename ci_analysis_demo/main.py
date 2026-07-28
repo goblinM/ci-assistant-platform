@@ -24,6 +24,7 @@ KNOWLEDGE_DOCS_PATH = Path(__file__).resolve().parents[0] / "knowledge_docs" / "
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """管理应用启动与关闭期间的资源生命周期。"""
     setup_logger()
     settings = get_settings()
     app.state.retriever = LocalRetriever(KNOWLEDGE_DOCS_PATH)
@@ -48,6 +49,7 @@ app.include_router(analyze_router)
 
 
 def main():
+    """运行当前模块的命令行入口。"""
     app_import = "main:app" if Path.cwd() == Path(__file__).resolve().parent else "ci_analysis_demo.main:app"
     uvicorn.run(
         app_import,

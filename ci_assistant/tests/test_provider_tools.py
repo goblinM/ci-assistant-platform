@@ -6,6 +6,7 @@ from ci_assistant.tools import ProviderToolExecutor, default_tool_specs
 
 
 def test_tool_candidates_obey_provider_capabilities_and_keywords() -> None:
+    """验证 ``test_tool_candidates_obey_provider_capabilities_and_keywords`` 所描述的预期行为。"""
     provider = MagicMock()
     provider.capabilities = frozenset(
         {ProviderCapability.RUN_READ, ProviderCapability.JOB_READ}
@@ -21,6 +22,7 @@ def test_tool_candidates_obey_provider_capabilities_and_keywords() -> None:
 
 
 def test_tool_execution_receives_provider_not_global_client() -> None:
+    """验证 ``test_tool_execution_receives_provider_not_global_client`` 所描述的预期行为。"""
     provider = MagicMock()
     provider.provider_type = "gitlab"
     provider.capabilities = frozenset(

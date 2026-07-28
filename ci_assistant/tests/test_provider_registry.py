@@ -5,6 +5,7 @@ from ci_assistant.providers.registry import ProviderRegistry
 
 
 def test_provider_registry_creates_registered_provider() -> None:
+    """验证 ``test_provider_registry_creates_registered_provider`` 所描述的预期行为。"""
     registry = ProviderRegistry()
     provider = MagicMock()
     factory = MagicMock(return_value=provider)

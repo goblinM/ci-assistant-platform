@@ -15,6 +15,7 @@ router = APIRouter(tags=["observability"])
 
 class MetricsMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
+        """处理 ``dispatch`` 对应的请求或事件。"""
         started = time.perf_counter()
         response = await call_next(request)
         route = request.scope.get("route")
@@ -26,5 +27,6 @@ class MetricsMiddleware(BaseHTTPMiddleware):
 
 @router.get("/metrics", include_in_schema=False)
 async def metrics() -> Response:
+    """执行 ``metrics`` 对应的领域操作。"""
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 

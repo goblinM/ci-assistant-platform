@@ -4,6 +4,7 @@ from ci_assistant.providers.manager import build_provider_manager
 
 
 def test_provider_manager_builds_gitlab_from_connection_config(tmp_path) -> None:
+    """验证 ``test_provider_manager_builds_gitlab_from_connection_config`` 所描述的预期行为。"""
     config = tmp_path / "config.yml"
     config.write_text(
         """

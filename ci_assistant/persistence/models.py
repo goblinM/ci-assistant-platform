@@ -9,6 +9,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
 def utc_now() -> datetime:
+    """执行 ``utc_now`` 对应的领域操作。"""
     return datetime.now(timezone.utc)
 
 

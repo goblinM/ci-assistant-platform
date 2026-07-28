@@ -34,6 +34,7 @@ class KnowledgeIndexer:
         self.dimension = dimension
 
     async def rebuild_tenant(self, session: AsyncSession, tenant_id: UUID) -> str:
+        """执行 ``rebuild_tenant`` 对应的知识库处理流程。"""
         result = await session.execute(
             select(KnowledgeChunk, KnowledgeDocument)
             .join(KnowledgeDocument, KnowledgeChunk.document_id == KnowledgeDocument.id)
@@ -94,6 +95,7 @@ class KnowledgeIndexer:
         *,
         error: str | None = None,
     ) -> None:
+        """执行 ``complete_job`` 对应的领域操作。"""
         job = await session.get(IngestionJob, job_id)
         if job is not None:
             job.status = "failed" if error else "succeeded"

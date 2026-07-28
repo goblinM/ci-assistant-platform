@@ -10,6 +10,7 @@ from ci_assistant.schemas.result import DiagnosisResult
 
 
 def test_prompt_injection_is_delimited_as_untrusted_evidence() -> None:
+    """验证 ``test_prompt_injection_is_delimited_as_untrusted_evidence`` 所描述的预期行为。"""
     gateway = AsyncMock(
         diagnose=AsyncMock(
             return_value=DiagnosisResult(
@@ -42,6 +43,7 @@ def test_prompt_injection_is_delimited_as_untrusted_evidence() -> None:
 
 
 def test_health_endpoint_performance_baseline() -> None:
+    """验证 ``test_health_endpoint_performance_baseline`` 所描述的预期行为。"""
     client = TestClient(create_app())
     durations = []
     for _ in range(30):

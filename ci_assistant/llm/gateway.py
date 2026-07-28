@@ -10,7 +10,9 @@ from ci_assistant.schemas.result import DiagnosisResult
 
 
 class DiagnosisGateway(Protocol):
-    async def diagnose(self, prompt: str) -> DiagnosisResult: ...
+    async def diagnose(self, prompt: str) -> DiagnosisResult:
+        """执行 ``diagnose`` 对应的 CI 故障诊断。"""
+        ...
 
 
 class OpenAIDiagnosisGateway:
@@ -24,6 +26,7 @@ class OpenAIDiagnosisGateway:
         )
 
     async def diagnose(self, prompt: str) -> DiagnosisResult:
+        """执行 ``diagnose`` 对应的 CI 故障诊断。"""
         response = await self.client.chat.completions.create(
             model=self.model,
             messages=[
@@ -47,6 +50,7 @@ class RuleBasedDiagnosisGateway:
     """Deterministic offline gateway for private deployments and integration tests."""
 
     async def diagnose(self, prompt: str) -> DiagnosisResult:
+        """执行 ``diagnose`` 对应的 CI 故障诊断。"""
         lowered = prompt.lower()
         if "modulenotfounderror" in lowered or "no module named" in lowered:
             return DiagnosisResult(

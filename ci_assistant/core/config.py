@@ -48,6 +48,7 @@ class CIConnectionConfig(BaseModel):
     @field_validator("base_url")
     @classmethod
     def validate_base_url(cls, value: str) -> str:
+        """校验 ``validate_base_url`` 对应的约束。"""
         if not value.startswith(("http://", "https://")):
             raise ValueError("base_url must start with http:// or https://")
         return value.rstrip("/")
@@ -58,6 +59,7 @@ class CIConfig(BaseModel):
 
     @model_validator(mode="after")
     def connection_ids_are_unique(self) -> CIConfig:
+        """执行 ``connection_ids_are_unique`` 对应的领域操作。"""
         ids = [connection.id for connection in self.connections]
         if len(ids) != len(set(ids)):
             raise ValueError("CI connection ids must be unique")
@@ -90,6 +92,7 @@ class SecurityConfig(BaseModel):
     api_keys_json: SecretStr = SecretStr("{}")
 
     def api_keys(self) -> dict[str, str]:
+        """执行 ``api_keys`` 对应的领域操作。"""
         try:
             value = json.loads(self.api_keys_json.get_secret_value())
         except json.JSONDecodeError as exc:
@@ -123,6 +126,7 @@ class PlatformSettings(BaseModel):
 
     @model_validator(mode="after")
     def validate_production_settings(self) -> PlatformSettings:
+        """校验 ``validate_production_settings`` 对应的约束。"""
         if self.app.environment != "production":
             return self
         if self.app.reload:

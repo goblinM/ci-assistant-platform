@@ -4,6 +4,7 @@ from ci_assistant.workers.task_logging import log_task_failure
 
 
 def test_task_failure_log_uses_stable_fields_without_exception_text(caplog) -> None:
+    """验证 ``test_task_failure_log_uses_stable_fields_without_exception_text`` 所描述的预期行为。"""
     secret = "must-not-appear"
 
     with caplog.at_level(logging.ERROR):

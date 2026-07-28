@@ -103,6 +103,7 @@ async def _diagnose(diagnosis_id: str) -> dict[str, Any]:
             hybrid = HybridRetriever(store)
 
             async def retrieve(query: str) -> list[Reference]:
+                """按查询条件检索知识数据。"""
                 vector = embedder.encode([query])[0]
                 matches = hybrid.retrieve(
                     query_vector=vector,

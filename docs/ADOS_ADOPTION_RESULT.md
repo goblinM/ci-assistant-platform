@@ -174,3 +174,30 @@ GitHub Actions 文件已在本地验证，但远端工作流是否成功仍需�
 - 根据实际发布需求选择依赖锁定、SBOM 和镜像漏洞扫描方案。
 - 定期执行 PostgreSQL 恢复演练并记录 RPO/RTO。
 - 兼容包必须满足架构文档的五项门槛后再进入独立退役变更。
+
+## P1 Docstring 专项治理结果
+
+> 执行日期：2026-07-28
+> 基线：`db5f38f`
+
+用户确认将原“触及时治理”调整为一次性专项治理后，重新运行 ADOS 静态扫描。受 P2
+新增治理测试影响，实时缺口由历史记录的 255 处变为 256 处，分布在 96 个 Python 文件：
+`ci_assistant` 198 处、`ci_analysis_demo` 58 处。
+
+本次仅为扫描命中的公共函数补充中文 Docstring，没有修改函数签名、控制流、公开 API、
+Provider Protocol、数据库迁移逻辑或知识索引格式。治理后重新扫描，公共函数 Docstring
+缺口为 0。
+
+为防止批量修改引入行为变化，对全部 96 个涉及文件执行治理前后 AST 对比；比较时仅移除
+模块、类和函数的 Docstring 节点，其余结构必须完全一致。结果为 96 个文件全部一致，
+Docstring 之外的 AST 变化为 0。
+
+验证结果：
+
+- `python3 -m compileall -q ci_assistant ci_analysis_demo`：通过。
+- `venv/bin/pytest -q`：`62 passed, 1 warning in 5.66s`。
+- ADOS 静态扫描：`missing_public_docstrings = 0`。
+- `git diff --check`：通过。
+
+唯一警告仍为 FastAPI TestClient 对当前 Starlette 适配层的弃用提示，与本次 Docstring
+治理无关。未启动应用、数据库、Worker 或外部 Provider。

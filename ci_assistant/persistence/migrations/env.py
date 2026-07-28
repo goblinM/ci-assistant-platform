@@ -22,6 +22,7 @@ target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
+    """在离线模式下生成数据库迁移 SQL。"""
     context.configure(
         url=config.get_main_option("sqlalchemy.url"),
         target_metadata=target_metadata,
@@ -34,12 +35,14 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection) -> None:
+    """使用给定连接执行数据库迁移。"""
     context.configure(connection=connection, target_metadata=target_metadata, compare_type=True)
     with context.begin_transaction():
         context.run_migrations()
 
 
 async def run_async_migrations() -> None:
+    """建立异步连接并执行数据库迁移。"""
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",

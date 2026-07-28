@@ -19,6 +19,7 @@ SUPPORTED_ERROR_TYPES = set(AnalysisLogResponse.model_fields["error_type"].annot
 
 
 def load_cases(path: str) -> list[dict[str, Any]]:
+    """解析或加载 ``load_cases`` 对应的数据。"""
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
@@ -73,12 +74,14 @@ def reference_hit(references, expected_titles: list[str]) -> bool:
 
 
 def reference_titles(references) -> list[str]:
+    """执行 ``reference_titles`` 对应的领域操作。"""
     if not references:
         return []
     return [_get_field(ref, "title", "") for ref in references]
 
 
 async def evaluate_one(client: httpx.AsyncClient, case: dict[str, Any], api_url: str) -> dict[str, Any]:
+    """执行 ``evaluate_one`` 对应的领域操作。"""
     case_id = case["case_id"]
 
     try:
@@ -168,6 +171,7 @@ async def evaluate_one(client: httpx.AsyncClient, case: dict[str, Any], api_url:
 
 
 async def main(use_rag: bool = False):
+    """运行当前模块的命令行入口。"""
     print(EVAL_CASE_PATH)
     cases = load_cases(EVAL_CASE_PATH)
     print(f"Loaded cases: {len(cases)}")

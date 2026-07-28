@@ -5,6 +5,7 @@ from ci_assistant.workers.celery_app import create_celery_app
 
 
 def test_worker_uses_redis_and_reliable_delivery_settings() -> None:
+    """验证 ``test_worker_uses_redis_and_reliable_delivery_settings`` 所描述的预期行为。"""
     fake_app = MagicMock()
     factory = MagicMock(return_value=fake_app)
     settings = load_settings(environ={"REDIS_URL": "redis://queue.example:6379/2"})

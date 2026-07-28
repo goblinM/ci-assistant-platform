@@ -4,6 +4,7 @@ from ci_assistant.knowledge.index import FaissIndexStore, IndexedChunk
 
 
 def test_faiss_index_publishes_atomically_and_enforces_acl(tmp_path) -> None:
+    """验证 ``test_faiss_index_publishes_atomically_and_enforces_acl`` 所描述的预期行为。"""
     store = FaissIndexStore(tmp_path / "indexes", dimension=2)
     chunks = [
         IndexedChunk(1, "tenant-a global", "tenant-a", None, None, {}),
@@ -31,6 +32,7 @@ def test_faiss_index_publishes_atomically_and_enforces_acl(tmp_path) -> None:
 
 
 def test_empty_index_version_removes_all_previous_results(tmp_path) -> None:
+    """验证 ``test_empty_index_version_removes_all_previous_results`` 所描述的预期行为。"""
     store = FaissIndexStore(tmp_path / "indexes", dimension=2)
     store.publish(
         version="v1",

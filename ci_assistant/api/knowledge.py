@@ -31,6 +31,7 @@ async def create_document(
     request: Request,
     session: AsyncSession = Depends(get_session),
 ):
+    """创建 ``create_document`` 对应的领域对象或结果。"""
     enforce_tenant(request, payload.tenant_id)
     created = await KnowledgeService().create(session, payload)
     if not created.duplicate:
@@ -53,6 +54,7 @@ async def list_documents(
     project_id: UUID | None = None,
     session: AsyncSession = Depends(get_session),
 ):
+    """列出 ``list_documents`` 对应的数据。"""
     enforce_tenant(request, tenant_id)
     documents = await KnowledgeRepository(session).list_scoped(
         tenant_id, project_id=project_id
@@ -71,6 +73,7 @@ async def get_document(
     request: Request,
     session: AsyncSession = Depends(get_session),
 ):
+    """获取 ``get_document`` 对应的数据。"""
     enforce_tenant(request, tenant_id)
     document = await KnowledgeRepository(session).get(document_id)
     if document is None or document.tenant_id != tenant_id or document.status == "deleted":
@@ -93,6 +96,7 @@ async def delete_document(
     request: Request,
     session: AsyncSession = Depends(get_session),
 ):
+    """删除 ``delete_document`` 对应的数据。"""
     enforce_tenant(request, tenant_id)
     document = await KnowledgeService().delete(session, document_id, tenant_id)
     if document is None:
@@ -111,6 +115,7 @@ async def delete_document(
 
 @router.post("/reindex", status_code=202)
 async def reindex(tenant_id: UUID, request: Request):
+    """执行 ``reindex`` 对应的知识库处理流程。"""
     enforce_tenant(request, tenant_id)
     _dispatch(request, "ci_assistant.reindex_knowledge", str(tenant_id))
     return {

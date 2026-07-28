@@ -23,6 +23,7 @@ class ProcessedDocument:
 
 
 def mask_secrets(content: str) -> str:
+    """执行 ``mask_secrets`` 对应的领域操作。"""
     masked = content
     for pattern in _SECRET_PATTERNS:
         if pattern.groups:
@@ -33,6 +34,7 @@ def mask_secrets(content: str) -> str:
 
 
 def normalize_document(content: str, format: Literal["markdown", "json"]) -> str:
+    """将 ``normalize_document`` 对应的数据规范化。"""
     if not content.strip():
         raise ValueError("document content cannot be empty")
     if len(content) > MAX_DOCUMENT_CHARS:
@@ -47,6 +49,7 @@ def normalize_document(content: str, format: Literal["markdown", "json"]) -> str
 
 
 def chunk_document(content: str, *, target_chars: int = 800) -> list[str]:
+    """执行 ``chunk_document`` 对应的领域操作。"""
     if target_chars < 300:
         raise ValueError("target_chars must be at least 300")
     blocks = re.split(r"\n(?=#{1,6}\s)|\n{2,}", content)
@@ -73,6 +76,7 @@ def chunk_document(content: str, *, target_chars: int = 800) -> list[str]:
 
 
 def process_document(content: str, format: Literal["markdown", "json"]) -> ProcessedDocument:
+    """执行 ``process_document`` 对应的知识库处理流程。"""
     normalized = normalize_document(content, format)
     return ProcessedDocument(
         normalized_content=normalized,

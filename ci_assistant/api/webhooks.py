@@ -20,6 +20,7 @@ async def receive_ci_webhook(
     request: Request,
     session: AsyncSession = Depends(get_session),
 ):
+    """处理 ``receive_ci_webhook`` 对应的请求或事件。"""
     connection = await CIConnectionRepository(session).get_by_external_id(connection_id)
     if connection is None:
         raise PlatformError(

@@ -57,9 +57,11 @@ class ToolRuntimeContext(BaseModel):
 
     @staticmethod
     def cache_key(*parts: str | int | None) -> str:
+        """执行 ``cache_key`` 对应的领域操作。"""
         return ":".join(str(part) for part in parts if part is not None)
 
     def get_prefetched(self, resource: str, *key_parts: str | int | None) -> Any:
+        """获取 ``get_prefetched`` 对应的数据。"""
         key = self.cache_key(*key_parts)
         return self.prefetched.get(resource, {}).get(key)
 
@@ -77,17 +79,21 @@ class ToolContext(BaseModel):
 
     @property
     def called_tool_names(self) -> list[str]:
+        """执行 ``called_tool_names`` 对应的领域操作。"""
         return [item.tool_name for item in self.results]
 
     @property
     def successful_tool_names(self) -> list[str]:
+        """执行 ``successful_tool_names`` 对应的领域操作。"""
         return [item.tool_name for item in self.results if item.success]
 
     @property
     def failed_tool_names(self) -> list[str]:
+        """执行 ``failed_tool_names`` 对应的领域操作。"""
         return [item.tool_name for item in self.results if not item.success]
 
     def to_prompt_context(self) -> dict[str, Any]:
+        """将当前数据转换为 ``to_prompt_context`` 对应的表示。"""
         return {
             "primary_error": self.primary_error,
             "matched_errors": self.matched_errors,

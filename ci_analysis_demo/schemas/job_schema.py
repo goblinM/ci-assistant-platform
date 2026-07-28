@@ -15,6 +15,7 @@ class CreateJobRequest(BaseModel):
     @field_validator("branch")
     @classmethod
     def check_branch(cls, value: str) -> str:
+        """校验 ``check_branch`` 对应的约束。"""
         if " " in value:
             raise ValueError("branch must not contain spaces")
         return value
@@ -29,6 +30,7 @@ class CreatePipelineRequest(BaseModel):
     @field_validator("branch")
     @classmethod
     def check_branch(cls, value: str) -> str:
+        """校验 ``check_branch`` 对应的约束。"""
         if " " in value:
             raise ValueError("branch must not contain spaces")
         return value

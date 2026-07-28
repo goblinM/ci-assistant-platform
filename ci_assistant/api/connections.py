@@ -11,6 +11,7 @@ router = APIRouter(prefix="/api/v1/connections", tags=["connections"])
 
 @router.get("")
 async def list_connections(request: Request):
+    """列出 ``list_connections`` 对应的数据。"""
     enforce_admin(request)
     providers = request.app.state.provider_manager.list()
     return {
@@ -29,6 +30,7 @@ async def list_connections(request: Request):
 
 @router.post("/{connection_id}/test")
 async def test_connection(connection_id: str, request: Request):
+    """检查 ``test_connection`` 对应的服务状态。"""
     enforce_admin(request)
     try:
         provider = request.app.state.provider_manager.get(connection_id)

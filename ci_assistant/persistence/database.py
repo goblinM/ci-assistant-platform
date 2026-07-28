@@ -31,6 +31,7 @@ class Database:
 
     @classmethod
     def from_config(cls, config: DatabaseConfig) -> Database:
+        """管理 ``from_config`` 对应的持久化资源。"""
         engine = create_async_engine(
             config.url.get_secret_value(),
             pool_pre_ping=True,
@@ -43,6 +44,7 @@ class Database:
 
     @asynccontextmanager
     async def session(self) -> AsyncIterator[AsyncSession]:
+        """管理 ``session`` 对应的持久化资源。"""
         session = self.session_factory()
         try:
             yield session
@@ -54,5 +56,6 @@ class Database:
             await session.close()
 
     async def dispose(self) -> None:
+        """管理 ``dispose`` 对应的持久化资源。"""
         await self.engine.dispose()
 

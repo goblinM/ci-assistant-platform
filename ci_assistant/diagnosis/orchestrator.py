@@ -48,6 +48,7 @@ class DiagnosisOrchestrator:
         use_rag: bool = True,
         use_tools: bool = True,
     ) -> OrchestrationOutput:
+        """执行 ``diagnose`` 对应的 CI 故障诊断。"""
         started = time.perf_counter()
         clean_log = preprocess_log(log)
         rag_error: str | None = None

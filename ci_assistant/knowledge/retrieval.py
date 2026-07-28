@@ -22,6 +22,7 @@ class HybridRetriever:
         provider: str | None,
         top_k: int = 5,
     ) -> list[dict[str, Any]]:
+        """按查询条件检索知识数据。"""
         candidates = self.store.search(
             query_vector,
             tenant_id=tenant_id,

@@ -6,6 +6,7 @@ from ci_assistant.knowledge.processing import process_document
 
 
 def test_markdown_processing_masks_secrets_and_chunks_by_structure() -> None:
+    """验证 ``test_markdown_processing_masks_secrets_and_chunks_by_structure`` 所描述的预期行为。"""
     content = (
         "# Failure\n\nTOKEN=super-secret-value\n\n"
         "## Cause\n\nMissing dependency.\n\n"
@@ -21,6 +22,7 @@ def test_markdown_processing_masks_secrets_and_chunks_by_structure() -> None:
 
 
 def test_json_processing_is_canonical_for_deduplication() -> None:
+    """验证 ``test_json_processing_is_canonical_for_deduplication`` 所描述的预期行为。"""
     first = process_document('{"b": 2, "a": 1}', "json")
     second = process_document('{"a":1,"b":2}', "json")
 
@@ -29,6 +31,7 @@ def test_json_processing_is_canonical_for_deduplication() -> None:
 
 
 def test_invalid_json_is_rejected() -> None:
+    """验证 ``test_invalid_json_is_rejected`` 所描述的预期行为。"""
     with pytest.raises(ValueError, match="invalid JSON"):
         process_document("{", "json")
 

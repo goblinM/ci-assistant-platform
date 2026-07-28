@@ -5,6 +5,7 @@ ROOT = Path(__file__).parents[2]
 
 
 def test_github_quality_workflow_enforces_core_checks() -> None:
+    """验证 ``test_github_quality_workflow_enforces_core_checks`` 所描述的预期行为。"""
     workflow = (ROOT / ".github/workflows/quality.yml").read_text(encoding="utf-8")
 
     assert "permissions:\n  contents: read" in workflow
@@ -16,6 +17,7 @@ def test_github_quality_workflow_enforces_core_checks() -> None:
 
 
 def test_ados_core_documentation_entries_exist() -> None:
+    """验证 ``test_ados_core_documentation_entries_exist`` 所描述的预期行为。"""
     for name in (
         "DEVELOPMENT.md",
         "TODO.md",

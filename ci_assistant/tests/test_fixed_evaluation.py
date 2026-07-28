@@ -6,11 +6,13 @@ from ci_assistant.llm.gateway import RuleBasedDiagnosisGateway
 
 
 def test_fixed_gitlab_jenkins_regression_set() -> None:
+    """验证 ``test_fixed_gitlab_jenkins_regression_set`` 所描述的预期行为。"""
     cases = json.loads(
         (Path(__file__).parents[1] / "evaluation_cases.json").read_text(encoding="utf-8")
     )
 
     async def evaluate():
+        """提供 ``evaluate`` 场景所需的测试替身。"""
         gateway = RuleBasedDiagnosisGateway()
         return [await gateway.diagnose(case["log"]) for case in cases]
 

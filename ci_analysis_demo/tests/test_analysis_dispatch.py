@@ -18,21 +18,26 @@ def _response() -> AnalysisLogResponse:
 
 
 def test_analyze_log_by_mode_dispatches_all_modes(monkeypatch):
+    """验证 ``test_analyze_log_by_mode_dispatches_all_modes`` 所描述的预期行为。"""
     calls: list[str] = []
 
     async def fake_llm(*args, **kwargs):
+        """提供 ``fake_llm`` 场景所需的测试替身。"""
         calls.append("llm")
         return _response()
 
     async def fake_rag(*args, **kwargs):
+        """提供 ``fake_rag`` 场景所需的测试替身。"""
         calls.append("rag")
         return _response()
 
     async def fake_rule(*args, **kwargs):
+        """提供 ``fake_rule`` 场景所需的测试替身。"""
         calls.append("rule")
         return _response()
 
     async def fake_autonomous(*args, **kwargs):
+        """提供 ``fake_autonomous`` 场景所需的测试替身。"""
         calls.append("autonomous")
         return _response()
 
@@ -67,19 +72,24 @@ def test_analyze_log_by_mode_dispatches_all_modes(monkeypatch):
 
 
 def test_gitlab_job_reuses_dispatcher_and_forwards_mode(monkeypatch):
+    """验证 ``test_gitlab_job_reuses_dispatcher_and_forwards_mode`` 所描述的预期行为。"""
     captured: dict = {}
 
     class FakeGitLabClient:
         async def get_job(self, project_id, job_id):
+            """提供 ``get_job`` 场景所需的测试替身。"""
             return {"name": "unit-test", "status": "failed", "stage": "test"}
 
         async def get_job_trace(self, project_id, job_id):
+            """提供 ``get_job_trace`` 场景所需的测试替身。"""
             return "ModuleNotFoundError: No module named 'requests'"
 
         async def get_pipeline(self, project_id, pipeline_id):
+            """提供 ``get_pipeline`` 场景所需的测试替身。"""
             raise AssertionError("pipeline should be fetched lazily by a tool")
 
     async def fake_dispatch(**kwargs):
+        """提供 ``fake_dispatch`` 场景所需的测试替身。"""
         captured.update(kwargs)
         return _response()
 
@@ -111,11 +121,13 @@ def test_gitlab_job_reuses_dispatcher_and_forwards_mode(monkeypatch):
 
 
 def test_query_job_context_reuses_request_cache():
+    """验证 ``test_query_job_context_reuses_request_cache`` 所描述的预期行为。"""
     class CountingGitLabClient:
         def __init__(self):
             self.get_job_calls = 0
 
         async def get_job(self, project_id, job_id):
+            """提供 ``get_job`` 场景所需的测试替身。"""
             self.get_job_calls += 1
             return {"id": job_id, "name": "api-job", "status": "failed"}
 

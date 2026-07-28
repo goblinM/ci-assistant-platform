@@ -31,6 +31,7 @@ TOOL_FUNCTIONS: dict[str, Callable[..., dict[str, Any]]] = {
 
 
 def create_default_tools_executor(gitlab_client=None) -> ToolsExecutor:
+    """创建 ``create_default_tools_executor`` 对应的领域对象或结果。"""
     executor = ToolsExecutor(gitlab_client=gitlab_client)
 
     for tool_schema in CI_TOOLS_SCHEMA:

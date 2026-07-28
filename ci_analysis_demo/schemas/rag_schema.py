@@ -41,17 +41,21 @@ class RAGResult(BaseModel):
 
     @property
     def hit_titles(self) -> list[str]:
+        """执行 ``hit_titles`` 对应的领域操作。"""
         return [doc.title for doc in self.documents]
 
     @property
     def hit_doc_ids(self) -> list[str]:
+        """执行 ``hit_doc_ids`` 对应的领域操作。"""
         return [doc.doc_id for doc in self.documents]
 
     @property
     def scores(self) -> list[float | None]:
+        """执行 ``scores`` 对应的领域操作。"""
         return [doc.score for doc in self.documents]
 
     def to_references(self) -> list[dict[str, Any]]:
+        """将当前数据转换为 ``to_references`` 对应的表示。"""
         return [doc.to_reference() for doc in self.documents]
 
     def to_prompt_context(self, max_chars: int | None = None) -> str:

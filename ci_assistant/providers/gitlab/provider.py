@@ -31,6 +31,7 @@ _STATUS_MAP = {
 
 
 def normalize_status(value: str | None) -> RunStatus:
+    """将 ``normalize_status`` 对应的数据规范化。"""
     return _STATUS_MAP.get(value or "", RunStatus.UNKNOWN)
 
 
@@ -52,9 +53,11 @@ class GitLabProvider:
         self.max_log_chars = max_log_chars
 
     async def test_connection(self) -> dict[str, Any]:
+        """检查 ``test_connection`` 对应的服务状态。"""
         return {"ok": True, "provider": "gitlab", "connection_id": self.connection_id}
 
     async def get_run(self, project_ref: str, run_id: str) -> PipelineRun:
+        """获取 ``get_run`` 对应的数据。"""
         payload = await self.client.get_pipeline(project_ref, run_id)
         return PipelineRun(
             provider="gitlab",
@@ -68,15 +71,18 @@ class GitLabProvider:
         )
 
     async def list_jobs(self, project_ref: str, run_id: str) -> list[JobRun]:
+        """列出 ``list_jobs`` 对应的数据。"""
         payloads = await self.client.list_pipeline_jobs(project_ref, run_id)
         return [self._map_job(payload, run_id) for payload in payloads]
 
     async def get_job(self, project_ref: str, job_id: str) -> JobRun:
+        """获取 ``get_job`` 对应的数据。"""
         payload = await self.client.get_job(project_ref, job_id)
         pipeline = payload.get("pipeline") or {}
         return self._map_job(payload, str(pipeline.get("id") or ""))
 
     async def get_job_log(self, project_ref: str, job_id: str) -> LogArtifact:
+        """获取 ``get_job_log`` 对应的数据。"""
         content = await self.client.get_job_trace(project_ref, job_id)
         return LogArtifact(
             job_id=job_id,
@@ -86,6 +92,7 @@ class GitLabProvider:
         )
 
     async def list_changes(self, project_ref: str, run_id: str) -> list[CommitChange]:
+        """列出 ``list_changes`` 对应的数据。"""
         run = await self.get_run(project_ref, run_id)
         payloads = await self.client.list_commits(project_ref, run.branch)
         return [
@@ -100,6 +107,7 @@ class GitLabProvider:
         ]
 
     async def verify_webhook(self, headers: dict[str, str], body: bytes) -> None:
+        """校验 ``verify_webhook`` 对应的约束。"""
         if self.webhook_secret is None:
             raise AuthenticationError("GitLab webhook secret is not configured")
         supplied = headers.get("X-Gitlab-Token") or headers.get("x-gitlab-token") or ""
@@ -107,6 +115,7 @@ class GitLabProvider:
             raise AuthenticationError("Invalid GitLab webhook token")
 
     async def parse_webhook(self, payload: dict[str, Any]) -> CIEvent:
+        """解析或加载 ``parse_webhook`` 对应的数据。"""
         project = payload.get("project") or {}
         obj = payload.get("object_attributes") or {}
         build_id = payload.get("build_id")

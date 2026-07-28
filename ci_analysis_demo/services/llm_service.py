@@ -418,6 +418,7 @@ async def analyze_log_with_autonomous_tools(
         trace_id: str | None = None,
         runtime_context: ToolRuntimeContext | None = None,
 ) -> AnalysisLogResponse:
+    """执行 ``analyze_log_with_autonomous_tools`` 对应的 CI 故障诊断。"""
     settings = get_settings()
     start = time.perf_counter()
     trace = AnalysisTrace(

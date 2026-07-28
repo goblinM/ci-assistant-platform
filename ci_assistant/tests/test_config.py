@@ -7,6 +7,7 @@ from ci_assistant.core.config import ConfigurationError, load_settings
 
 
 def test_load_settings_applies_all_precedence_layers(tmp_path: Path) -> None:
+    """验证 ``test_load_settings_applies_all_precedence_layers`` 所描述的预期行为。"""
     config_path = tmp_path / "config.yml"
     config_path.write_text(
         """
@@ -36,6 +37,7 @@ ai:
 
 
 def test_nested_environment_variables_are_supported() -> None:
+    """验证 ``test_nested_environment_variables_are_supported`` 所描述的预期行为。"""
     settings = load_settings(
         environ={
             "CI_ASSISTANT__APP__ENVIRONMENT": "test",
@@ -48,6 +50,7 @@ def test_nested_environment_variables_are_supported() -> None:
 
 
 def test_connection_ids_must_be_unique(tmp_path: Path) -> None:
+    """验证 ``test_connection_ids_must_be_unique`` 所描述的预期行为。"""
     config_path = tmp_path / "config.yml"
     config_path.write_text(
         """
@@ -64,6 +67,7 @@ ci:
 
 
 def test_production_rejects_reload_and_missing_ai_settings() -> None:
+    """验证 ``test_production_rejects_reload_and_missing_ai_settings`` 所描述的预期行为。"""
     with pytest.raises(ValidationError, match="missing production settings"):
         load_settings(environ={"APP_ENVIRONMENT": "production"})
 
@@ -80,6 +84,7 @@ def test_production_rejects_reload_and_missing_ai_settings() -> None:
 
 
 def test_production_allows_rule_gateway_without_external_ai_settings() -> None:
+    """验证 ``test_production_allows_rule_gateway_without_external_ai_settings`` 所描述的预期行为。"""
     settings = load_settings(
         environ={
             "APP_ENVIRONMENT": "production",
@@ -92,6 +97,7 @@ def test_production_allows_rule_gateway_without_external_ai_settings() -> None:
 
 
 def test_api_key_tenant_must_be_uuid_or_admin_wildcard() -> None:
+    """验证 ``test_api_key_tenant_must_be_uuid_or_admin_wildcard`` 所描述的预期行为。"""
     with pytest.raises(ValidationError, match="tenant values must be UUIDs"):
         load_settings(
             environ={
@@ -103,5 +109,6 @@ def test_api_key_tenant_must_be_uuid_or_admin_wildcard() -> None:
 
 
 def test_missing_explicit_config_file_is_an_error(tmp_path: Path) -> None:
+    """验证 ``test_missing_explicit_config_file_is_an_error`` 所描述的预期行为。"""
     with pytest.raises(ConfigurationError, match="config file does not exist"):
         load_settings(tmp_path / "missing.yml", environ={})

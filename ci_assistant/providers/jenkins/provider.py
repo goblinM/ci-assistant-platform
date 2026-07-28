@@ -18,6 +18,7 @@ from .client import JenkinsClient
 
 
 def normalize_status(result: str | None, building: bool = False) -> RunStatus:
+    """将 ``normalize_status`` 对应的数据规范化。"""
     if building:
         return RunStatus.RUNNING
     return {
@@ -56,6 +57,7 @@ class JenkinsProvider:
         self.max_log_chars = max_log_chars
 
     async def test_connection(self) -> dict[str, Any]:
+        """检查 ``test_connection`` 对应的服务状态。"""
         server = await self.client.get_server()
         return {
             "ok": True,
@@ -66,6 +68,7 @@ class JenkinsProvider:
         }
 
     async def get_run(self, project_ref: str, run_id: str) -> PipelineRun:
+        """获取 ``get_run`` 对应的数据。"""
         build = await self.client.get_build(project_ref, run_id)
         actions = build.get("actions") or []
         branch = self._action_value(actions, "branch")
@@ -82,13 +85,16 @@ class JenkinsProvider:
         )
 
     async def list_jobs(self, project_ref: str, run_id: str) -> list[JobRun]:
+        """列出 ``list_jobs`` 对应的数据。"""
         build = await self.client.get_build(project_ref, run_id)
         return [self._map_build(build, run_id)]
 
     async def get_job(self, project_ref: str, job_id: str) -> JobRun:
+        """获取 ``get_job`` 对应的数据。"""
         return self._map_build(await self.client.get_build(project_ref, job_id), job_id)
 
     async def get_job_log(self, project_ref: str, job_id: str) -> LogArtifact:
+        """获取 ``get_job_log`` 对应的数据。"""
         content = await self.client.get_console(project_ref, job_id)
         return LogArtifact(
             job_id=job_id,
@@ -98,6 +104,7 @@ class JenkinsProvider:
         )
 
     async def list_changes(self, project_ref: str, run_id: str) -> list[CommitChange]:
+        """列出 ``list_changes`` 对应的数据。"""
         build = await self.client.get_build(project_ref, run_id)
         items = []
         for change_set in build.get("changeSets") or [build.get("changeSet") or {}]:
@@ -114,6 +121,7 @@ class JenkinsProvider:
         ]
 
     async def verify_webhook(self, headers: dict[str, str], body: bytes) -> None:
+        """校验 ``verify_webhook`` 对应的约束。"""
         if self.webhook_secret is None:
             raise AuthenticationError("Jenkins webhook secret is not configured")
         supplied = headers.get("X-Jenkins-Token") or headers.get("x-jenkins-token") or ""
@@ -121,6 +129,7 @@ class JenkinsProvider:
             raise AuthenticationError("Invalid Jenkins webhook token")
 
     async def parse_webhook(self, payload: dict[str, Any]) -> CIEvent:
+        """解析或加载 ``parse_webhook`` 对应的数据。"""
         build = payload.get("build") or payload
         project = payload.get("name") or payload.get("job_name") or ""
         build_id = build.get("number") or build.get("id")

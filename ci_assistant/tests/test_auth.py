@@ -8,6 +8,7 @@ from ci_assistant.main import create_app
 
 
 def test_api_key_authentication_and_tenant_scope() -> None:
+    """验证 ``test_api_key_authentication_and_tenant_scope`` 所描述的预期行为。"""
     tenant_id = uuid4()
     app = create_app()
     app.state.settings = load_settings(
@@ -34,6 +35,7 @@ def test_api_key_authentication_and_tenant_scope() -> None:
 
 
 def test_health_endpoint_does_not_require_api_key() -> None:
+    """验证 ``test_health_endpoint_does_not_require_api_key`` 所描述的预期行为。"""
     app = create_app()
     app.state.settings = load_settings(
         environ={"API_KEYS_JSON": '{"key": "*"}'}

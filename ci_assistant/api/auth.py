@@ -23,6 +23,7 @@ _PUBLIC_PREFIXES = (
 
 class TenantAuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        """处理 ``dispatch`` 对应的请求或事件。"""
         if request.url.path.startswith(_PUBLIC_PREFIXES):
             return await call_next(request)
         settings: PlatformSettings | None = getattr(request.app.state, "settings", None)
@@ -61,6 +62,7 @@ class TenantAuthMiddleware(BaseHTTPMiddleware):
 
 
 def enforce_tenant(request: Request, tenant_id: UUID) -> None:
+    """执行 ``enforce_tenant`` 对应的领域操作。"""
     authorized = getattr(request.state, "tenant_id", None)
     is_admin = getattr(request.state, "is_admin", False)
     if authorized is not None and authorized != tenant_id and not is_admin:
@@ -72,6 +74,7 @@ def enforce_tenant(request: Request, tenant_id: UUID) -> None:
 
 
 def enforce_admin(request: Request) -> None:
+    """执行 ``enforce_admin`` 对应的领域操作。"""
     if hasattr(request.state, "is_admin") and not request.state.is_admin:
         raise PlatformError(
             ErrorCode.PERMISSION_DENIED,

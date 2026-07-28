@@ -163,6 +163,7 @@ class LocalRetriever:
             filters: dict | None = None,
             candidate_multiplier: int = 4,
     ) -> RAGResult:
+        """按查询条件检索知识数据。"""
         start = time.perf_counter()
         normalized_filters = filters or {}
         if not query.strip() or top_k <= 0:

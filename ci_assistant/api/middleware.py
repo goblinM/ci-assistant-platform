@@ -8,6 +8,7 @@ from starlette.requests import Request
 
 class RequestIDMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        """处理 ``dispatch`` 对应的请求或事件。"""
         request_id = request.headers.get("X-Request-ID") or f"req_{uuid4().hex}"
         request.state.request_id = request_id
         response = await call_next(request)

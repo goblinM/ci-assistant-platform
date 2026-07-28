@@ -30,6 +30,7 @@ class WebhookService:
         headers: dict[str, str],
         body: bytes,
     ) -> WebhookOutcome:
+        """处理 ``handle`` 对应的请求或事件。"""
         await provider.verify_webhook(headers, body)
         payload = json.loads(body)
         event = await provider.parse_webhook(payload)

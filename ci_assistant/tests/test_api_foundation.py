@@ -8,14 +8,17 @@ from ci_assistant.main import create_app
 
 
 async def healthy() -> None:
+    """提供 ``healthy`` 场景所需的测试替身。"""
     return None
 
 
 async def unhealthy() -> None:
+    """提供 ``unhealthy`` 场景所需的测试替身。"""
     raise ConnectionError("offline")
 
 
 def test_live_and_ready_health_endpoints() -> None:
+    """验证 ``test_live_and_ready_health_endpoints`` 所描述的预期行为。"""
     client = TestClient(create_app(readiness_checks={"database": healthy, "redis": healthy}))
 
     live = client.get("/health/live", headers={"X-Request-ID": "req_test"})
@@ -29,6 +32,7 @@ def test_live_and_ready_health_endpoints() -> None:
 
 
 def test_ready_returns_503_when_dependency_fails() -> None:
+    """验证 ``test_ready_returns_503_when_dependency_fails`` 所描述的预期行为。"""
     client = TestClient(create_app(readiness_checks={"database": healthy, "redis": unhealthy}))
 
     response = client.get("/health/ready")
@@ -39,10 +43,12 @@ def test_ready_returns_503_when_dependency_fails() -> None:
 
 
 def test_platform_errors_use_stable_envelope() -> None:
+    """验证 ``test_platform_errors_use_stable_envelope`` 所描述的预期行为。"""
     app = create_app()
 
     @app.get("/failure")
     async def failure(request: Request):
+        """提供 ``failure`` 场景所需的测试替身。"""
         raise PlatformError(
             ErrorCode.RESOURCE_NOT_FOUND,
             "Missing resource",

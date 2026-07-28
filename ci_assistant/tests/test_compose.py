@@ -4,6 +4,7 @@ import yaml
 
 
 def test_compose_contains_platform_services_and_healthchecks() -> None:
+    """验证 ``test_compose_contains_platform_services_and_healthchecks`` 所描述的预期行为。"""
     compose_path = Path(__file__).parents[2] / "docker-compose.yml"
     compose = yaml.safe_load(compose_path.read_text(encoding="utf-8"))
     services = compose["services"]

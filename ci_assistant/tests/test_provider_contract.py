@@ -7,6 +7,7 @@ from ci_assistant.providers.jenkins.provider import JenkinsProvider
 
 
 def test_gitlab_and_jenkins_satisfy_run_contract() -> None:
+    """验证 ``test_gitlab_and_jenkins_satisfy_run_contract`` 所描述的预期行为。"""
     gitlab_client = AsyncMock()
     gitlab_client.get_pipeline.return_value = {
         "id": 1,
@@ -22,6 +23,7 @@ def test_gitlab_and_jenkins_satisfy_run_contract() -> None:
     }
 
     async def load_runs():
+        """提供 ``load_runs`` 场景所需的测试替身。"""
         return (
             await GitLabProvider("g", gitlab_client).get_run("p", "1"),
             await JenkinsProvider("j", jenkins_client).get_run("p", "1"),

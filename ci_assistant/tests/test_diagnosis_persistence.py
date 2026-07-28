@@ -20,6 +20,7 @@ def _diagnosis() -> Diagnosis:
 
 
 def test_diagnosis_lifecycle_persists_result_and_trace() -> None:
+    """验证 ``test_diagnosis_lifecycle_persists_result_and_trace`` 所描述的预期行为。"""
     session = MagicMock()
     session.add = MagicMock()
     session.flush = AsyncMock()
@@ -27,6 +28,7 @@ def test_diagnosis_lifecycle_persists_result_and_trace() -> None:
     diagnosis = _diagnosis()
 
     async def run_lifecycle():
+        """提供 ``run_lifecycle`` 场景所需的测试替身。"""
         await repository.mark_running(diagnosis)
         return await repository.mark_succeeded(
             diagnosis,
@@ -47,6 +49,7 @@ def test_diagnosis_lifecycle_persists_result_and_trace() -> None:
 
 
 def test_diagnosis_failure_records_stable_error_code() -> None:
+    """验证 ``test_diagnosis_failure_records_stable_error_code`` 所描述的预期行为。"""
     session = MagicMock()
     session.flush = AsyncMock()
     diagnosis = _diagnosis()

@@ -17,12 +17,14 @@ class ProviderManager:
         self._providers = dict(providers)
 
     def get(self, connection_id: str) -> CIProvider:
+        """执行 ``get`` 对应的领域操作。"""
         try:
             return self._providers[connection_id]
         except KeyError as exc:
             raise KeyError(f"unknown CI connection: {connection_id}") from exc
 
     def list(self) -> list[CIProvider]:
+        """列出 ``list`` 对应的数据。"""
         return list(self._providers.values())
 
 
@@ -31,6 +33,7 @@ def build_provider_manager(
     *,
     environ: Mapping[str, str] | None = None,
 ) -> ProviderManager:
+    """创建 ``build_provider_manager`` 对应的领域对象或结果。"""
     environment = os.environ if environ is None else environ
     providers: dict[str, CIProvider] = {}
     for connection in settings.ci.connections:

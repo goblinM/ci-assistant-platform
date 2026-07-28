@@ -5,6 +5,7 @@ from .builtins import get_changes, get_job_context, get_job_log, get_run_context
 
 
 def default_tool_specs() -> list[ToolSpec]:
+    """执行 ``default_tool_specs`` 对应的领域操作。"""
     return [
         ToolSpec(
             name="get_run_context",

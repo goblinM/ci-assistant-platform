@@ -27,6 +27,7 @@ def _project_dependency_names() -> set[str]:
 
 
 def test_runtime_requirement_files_follow_pyproject_dependencies() -> None:
+    """验证 ``test_runtime_requirement_files_follow_pyproject_dependencies`` 所描述的预期行为。"""
     expected = _project_dependency_names()
 
     assert _requirement_names(ROOT / "requirements-runtime.txt") == expected

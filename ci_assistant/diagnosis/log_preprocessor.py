@@ -6,6 +6,7 @@ from ci_assistant.knowledge.processing import mask_secrets
 
 
 def preprocess_log(log: str, *, max_chars: int = 60_000) -> str:
+    """执行 ``preprocess_log`` 对应的领域操作。"""
     cleaned = re.sub(r"\x1b\[[0-9;]*m", "", log.replace("\x00", ""))
     cleaned = mask_secrets(cleaned)
     lines = cleaned.splitlines()

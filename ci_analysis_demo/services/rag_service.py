@@ -32,6 +32,7 @@ def retrieve_top_k(log_text: str, k: int = 3) -> list[dict]:
     query_tokens = _tokenize(log_text)
 
     def score(doc: dict) -> int:
+        """执行 ``score`` 对应的向量计算。"""
         searchable = " ".join(
             [
                 doc.get("title", ""),
@@ -53,4 +54,5 @@ def retrieve_top_k(log_text: str, k: int = 3) -> list[dict]:
 
 
 def sentence_transformer():
+    """执行 ``sentence_transformer`` 对应的向量计算。"""
     model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")

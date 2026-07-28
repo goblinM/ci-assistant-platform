@@ -13,6 +13,7 @@ def build_tool_calls(log_text: str,
                      job_name: str | None = None,
                      primary_error: dict | None = None) -> list[dict]:
     # 构造tool calls request
+    """创建 ``build_tool_calls`` 对应的领域对象或结果。"""
     primary_error = primary_error or extract_primary_error_keyword(log_text)
     project_id = project_name
     calls: list[dict] = []

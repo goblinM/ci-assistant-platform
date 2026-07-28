@@ -24,6 +24,7 @@ class KnowledgeService:
         session: AsyncSession,
         payload: CreateKnowledgeDocument,
     ) -> CreatedKnowledge:
+        """创建 ``create`` 对应的领域对象或结果。"""
         processed = process_document(payload.content, payload.format)
         repository = KnowledgeRepository(session)
         duplicate = await repository.find_active_hash(
@@ -68,6 +69,7 @@ class KnowledgeService:
         document_id: UUID,
         tenant_id: UUID,
     ) -> KnowledgeDocument | None:
+        """删除 ``delete`` 对应的数据。"""
         repository = KnowledgeRepository(session)
         document = await repository.get(document_id)
         if document is None or document.tenant_id != tenant_id:

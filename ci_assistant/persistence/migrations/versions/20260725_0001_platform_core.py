@@ -20,6 +20,7 @@ def _identity_columns() -> list[sa.Column]:
 
 
 def upgrade() -> None:
+    """升级数据库结构到当前迁移版本。"""
     op.create_table(
         "tenants",
         *_identity_columns(),
@@ -88,6 +89,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """回退当前迁移版本的数据库结构。"""
     for table in (
         "analysis_traces",
         "diagnoses",

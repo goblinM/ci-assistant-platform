@@ -17,6 +17,7 @@ class ExampleRecord(Base):
 
 
 def test_repository_uses_session_without_committing() -> None:
+    """验证 ``test_repository_uses_session_without_committing`` 所描述的预期行为。"""
     session = MagicMock()
     session.get = AsyncMock(return_value=ExampleRecord(id=1))
     session.flush = AsyncMock()
@@ -26,6 +27,7 @@ def test_repository_uses_session_without_committing() -> None:
     record = ExampleRecord(id=1)
 
     async def exercise_repository() -> ExampleRecord | None:
+        """提供 ``exercise_repository`` 场景所需的测试替身。"""
         await repository.add(record)
         loaded_record = await repository.get(uuid4())
         await repository.delete(record)
@@ -40,6 +42,7 @@ def test_repository_uses_session_without_committing() -> None:
 
 
 def test_database_session_commits_and_closes() -> None:
+    """验证 ``test_database_session_commits_and_closes`` 所描述的预期行为。"""
     session = MagicMock()
     session.commit = AsyncMock()
     session.rollback = AsyncMock()
@@ -47,6 +50,7 @@ def test_database_session_commits_and_closes() -> None:
     database = Database(MagicMock(), session_factory=MagicMock(return_value=session))
 
     async def use_session() -> None:
+        """提供 ``use_session`` 场景所需的测试替身。"""
         async with database.session() as yielded:
             assert yielded is session
 
@@ -58,6 +62,7 @@ def test_database_session_commits_and_closes() -> None:
 
 
 def test_database_session_rolls_back_on_error() -> None:
+    """验证 ``test_database_session_rolls_back_on_error`` 所描述的预期行为。"""
     session = MagicMock()
     session.commit = AsyncMock()
     session.rollback = AsyncMock()
@@ -65,6 +70,7 @@ def test_database_session_rolls_back_on_error() -> None:
     database = Database(MagicMock(), session_factory=MagicMock(return_value=session))
 
     async def fail_in_session() -> None:
+        """提供 ``fail_in_session`` 场景所需的测试替身。"""
         async with database.session():
             raise RuntimeError("failure")
 

@@ -4,6 +4,7 @@ from ci_assistant.main import create_app
 
 
 def test_metrics_endpoint_exposes_request_counters() -> None:
+    """验证 ``test_metrics_endpoint_exposes_request_counters`` 所描述的预期行为。"""
     client = TestClient(create_app())
     client.get("/health/live")
 

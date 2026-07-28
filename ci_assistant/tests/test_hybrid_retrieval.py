@@ -5,6 +5,7 @@ from ci_assistant.knowledge.retrieval import HybridRetriever
 
 
 def test_hybrid_retrieval_combines_semantic_keyword_and_metadata(tmp_path) -> None:
+    """验证 ``test_hybrid_retrieval_combines_semantic_keyword_and_metadata`` 所描述的预期行为。"""
     store = FaissIndexStore(tmp_path, 2)
     store.publish(
         version="v1",

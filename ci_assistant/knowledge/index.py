@@ -33,6 +33,7 @@ class FaissIndexStore:
         vectors: np.ndarray,
         chunks: list[IndexedChunk],
     ) -> None:
+        """执行 ``publish`` 对应的知识库处理流程。"""
         import faiss
 
         if vectors.shape != (len(chunks), self.dimension):
@@ -63,6 +64,7 @@ class FaissIndexStore:
         os.replace(pointer, self.root / "CURRENT")
 
     def current_version(self) -> str | None:
+        """获取 ``current_version`` 对应的数据。"""
         pointer = self.root / "CURRENT"
         return pointer.read_text(encoding="utf-8").strip() if pointer.exists() else None
 
@@ -75,6 +77,7 @@ class FaissIndexStore:
         provider: str | None,
         top_k: int = 5,
     ) -> list[dict[str, Any]]:
+        """按查询条件检索知识数据。"""
         import faiss
 
         version = self.current_version()

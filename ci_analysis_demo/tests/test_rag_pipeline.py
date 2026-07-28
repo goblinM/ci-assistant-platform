@@ -6,6 +6,7 @@ from ci_analysis_demo.services.rag_retriever import LocalRetriever
 
 
 def test_extract_query_removes_noise_and_deduplicates_errors():
+    """验证 ``test_extract_query_removes_noise_and_deduplicates_errors`` 所描述的预期行为。"""
     log_text = """2026-07-16 10:00:00 INFO install dependencies
 2026-07-16 10:00:01 ModuleNotFoundError: No module named 'requests'
 2026-07-16 10:00:01 ModuleNotFoundError: No module named 'requests'
@@ -17,12 +18,14 @@ def test_extract_query_removes_noise_and_deduplicates_errors():
 
 
 def test_build_rag_filters_uses_primary_error():
+    """验证 ``test_build_rag_filters_uses_primary_error`` 所描述的预期行为。"""
     filters = build_rag_filters("ModuleNotFoundError: No module named 'requests'")
 
     assert filters == {"error_type": "dependency_missing"}
 
 
 def test_document_normalization_prefers_explicit_metadata():
+    """验证 ``test_document_normalization_prefers_explicit_metadata`` 所描述的预期行为。"""
     retriever = LocalRetriever.__new__(LocalRetriever)
     document = retriever._normalize_document({
         "id": "docs-test",
@@ -40,6 +43,7 @@ def test_document_normalization_prefers_explicit_metadata():
 
 
 def test_keyword_and_rule_rerank_prioritize_exact_error_type():
+    """验证 ``test_keyword_and_rule_rerank_prioritize_exact_error_type`` 所描述的预期行为。"""
     retriever = LocalRetriever.__new__(LocalRetriever)
     query = "ModuleNotFoundError requests dependency_missing"
     dependency_doc = {
@@ -69,6 +73,7 @@ def test_keyword_and_rule_rerank_prioritize_exact_error_type():
 
 
 def test_query_rewrite_adds_shared_primary_error_context():
+    """验证 ``test_query_rewrite_adds_shared_primary_error_context`` 所描述的预期行为。"""
     retriever = LocalRetriever.__new__(LocalRetriever)
     rewritten = retriever.build_rag_query(
         "ModuleNotFoundError: No module named 'requests'",
@@ -84,6 +89,7 @@ def test_query_rewrite_adds_shared_primary_error_context():
 
 
 def test_rag_result_applies_context_budget_and_builds_references():
+    """验证 ``test_rag_result_applies_context_budget_and_builds_references`` 所描述的预期行为。"""
     result = RAGResult(
         query="dependency failure",
         filters={"error_type": "dependency_missing"},

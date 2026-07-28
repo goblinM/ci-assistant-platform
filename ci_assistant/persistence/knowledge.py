@@ -17,6 +17,7 @@ class KnowledgeRepository(Repository[KnowledgeDocument]):
     async def find_active_hash(
         self, tenant_id: UUID, content_hash: str
     ) -> KnowledgeDocument | None:
+        """执行 ``find_active_hash`` 对应的领域操作。"""
         result = await self.session.execute(
             select(KnowledgeDocument).where(
                 KnowledgeDocument.tenant_id == tenant_id,
@@ -32,6 +33,7 @@ class KnowledgeRepository(Repository[KnowledgeDocument]):
         *,
         project_id: UUID | None = None,
     ) -> Sequence[KnowledgeDocument]:
+        """列出 ``list_scoped`` 对应的数据。"""
         statement = select(KnowledgeDocument).where(
             KnowledgeDocument.tenant_id == tenant_id,
             KnowledgeDocument.status != "deleted",
@@ -51,6 +53,7 @@ class KnowledgeRepository(Repository[KnowledgeDocument]):
         title: str,
         project_id: UUID | None,
     ) -> KnowledgeDocument | None:
+        """执行 ``latest_version`` 对应的领域操作。"""
         statement = (
             select(KnowledgeDocument)
             .where(
@@ -69,6 +72,7 @@ class KnowledgeRepository(Repository[KnowledgeDocument]):
         document: KnowledgeDocument,
         chunks: list[str],
     ) -> None:
+        """执行 ``add_chunks`` 对应的领域操作。"""
         self.session.add_all(
             [
                 KnowledgeChunk(
@@ -94,6 +98,7 @@ class KnowledgeRepository(Repository[KnowledgeDocument]):
     async def create_ingestion_job(
         self, document: KnowledgeDocument, idempotency_key: str
     ) -> IngestionJob:
+        """创建 ``create_ingestion_job`` 对应的领域对象或结果。"""
         job = IngestionJob(
             document_id=document.id,
             status="queued",
@@ -105,5 +110,6 @@ class KnowledgeRepository(Repository[KnowledgeDocument]):
         return job
 
     async def logical_delete(self, document: KnowledgeDocument) -> None:
+        """删除 ``logical_delete`` 对应的数据。"""
         document.status = "deleted"
         await self.session.flush()

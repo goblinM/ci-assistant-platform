@@ -24,4 +24,5 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
+    """获取 ``get_settings`` 对应的数据。"""
     return Settings()

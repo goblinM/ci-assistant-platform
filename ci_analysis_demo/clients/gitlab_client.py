@@ -33,6 +33,7 @@ class GitLabClient:
             return await client.get(url, headers=self._header(), params=params)
 
     async def get_project(self, project_id: str) -> dict:
+        """获取 ``get_project`` 对应的数据。"""
         project_id = quote(project_id, safe="")
         resp = await self._get(f"/api/v4/projects/{project_id}")
         if resp.status_code >= 400:
@@ -84,6 +85,7 @@ class GitLabClient:
         return resp.json()
 
     async def list_pipeline_jobs(self, project_id: str, pipeline_id: str, per_page: int = 20) -> list[dict]:
+        """列出 ``list_pipeline_jobs`` 对应的数据。"""
         project_id = quote(project_id, safe="")
         resp = await self._get(
             f"/api/v4/projects/{project_id}/pipelines/{pipeline_id}/jobs",
@@ -100,6 +102,7 @@ class GitLabClient:
         ref_name: str | None = None,
         per_page: int = 5,
     ) -> list[dict]:
+        """列出 ``list_commits`` 对应的数据。"""
         project_id = quote(project_id, safe="")
         params = {"per_page": per_page}
         if ref_name:
@@ -111,6 +114,7 @@ class GitLabClient:
         return resp.json()
 
     async def get_repository_file_raw(self, project_id: str, file_path: str, ref: str) -> str:
+        """获取 ``get_repository_file_raw`` 对应的数据。"""
         project_id = quote(project_id, safe="")
         file_path = quote(file_path, safe="")
         resp = await self._get(

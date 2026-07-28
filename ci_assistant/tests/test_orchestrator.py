@@ -6,6 +6,7 @@ from ci_assistant.schemas.result import DiagnosisResult
 
 
 def test_orchestrator_masks_secrets_and_validates_result() -> None:
+    """验证 ``test_orchestrator_masks_secrets_and_validates_result`` 所描述的预期行为。"""
     gateway = AsyncMock()
     gateway.diagnose.return_value = DiagnosisResult(
         error_type="dependency_missing",
@@ -31,6 +32,7 @@ def test_orchestrator_masks_secrets_and_validates_result() -> None:
 
 
 def test_orchestrator_degrades_when_model_fails() -> None:
+    """验证 ``test_orchestrator_degrades_when_model_fails`` 所描述的预期行为。"""
     gateway = AsyncMock()
     gateway.diagnose.side_effect = TimeoutError()
 
@@ -47,6 +49,7 @@ def test_orchestrator_degrades_when_model_fails() -> None:
 
 
 def test_orchestrator_degrades_when_retrieval_fails() -> None:
+    """验证 ``test_orchestrator_degrades_when_retrieval_fails`` 所描述的预期行为。"""
     gateway = AsyncMock()
     gateway.diagnose.return_value = DiagnosisResult(
         error_type="unknown",

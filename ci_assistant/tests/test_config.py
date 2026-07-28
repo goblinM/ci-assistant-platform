@@ -49,6 +49,35 @@ def test_nested_environment_variables_are_supported() -> None:
     assert settings.knowledge.context_max_chars == 9000
 
 
+def test_unlimited_ocr_nested_configuration_is_supported() -> None:
+    """验证 Unlimited-OCR 可通过嵌套环境变量启用和限流。"""
+    settings = load_settings(
+        environ={
+            "CI_ASSISTANT__KNOWLEDGE__UNLIMITED_OCR__ENABLED": "true",
+            "CI_ASSISTANT__KNOWLEDGE__UNLIMITED_OCR__BASE_URL": (
+                "http://ocr.internal:10000"
+            ),
+            "CI_ASSISTANT__KNOWLEDGE__UNLIMITED_OCR__MAX_PDF_PAGES": "20",
+        }
+    )
+
+    assert settings.knowledge.unlimited_ocr.enabled is True
+    assert settings.knowledge.unlimited_ocr.base_url == "http://ocr.internal:10000"
+    assert settings.knowledge.unlimited_ocr.max_pdf_pages == 20
+
+
+def test_unlimited_ocr_rejects_non_http_service_url() -> None:
+    """验证 Unlimited-OCR 拒绝非 HTTP 服务地址。"""
+    with pytest.raises(ValidationError, match="base_url must start"):
+        load_settings(
+            environ={
+                "CI_ASSISTANT__KNOWLEDGE__UNLIMITED_OCR__BASE_URL": (
+                    "file:///tmp/ocr"
+                )
+            }
+        )
+
+
 def test_connection_ids_must_be_unique(tmp_path: Path) -> None:
     """验证 ``test_connection_ids_must_be_unique`` 所描述的预期行为。"""
     config_path = tmp_path / "config.yml"

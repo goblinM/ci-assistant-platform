@@ -9,6 +9,13 @@
 - 补充 PostgreSQL/FAISS 备份恢复和治理说明。
 - 完成 256 处公共函数中文 Docstring 专项治理，静态扫描缺口归零。
 
+## 0.6.1 — 2026-07-28
+
+- 增加 PDF、DOCX、HTML 文件知识上传端点。
+- DOCX/HTML 使用受限原生解析，PDF 使用独立 Unlimited-OCR 服务。
+- 增加文件大小、DOCX ZIP Bomb、PDF 页数和总像素安全限制。
+- 解析文本复用 Secret Mask、Chunk、PostgreSQL、FAISS 和 Provider ACL。
+
 ## 0.6.0 — 2026-07-28
 
 - 增加只读 GitHub Actions Provider，覆盖 Workflow Run、Job、日志、Head Commit 和

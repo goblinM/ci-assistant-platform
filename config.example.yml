@@ -44,3 +44,13 @@ knowledge:
   index_backend: faiss
   storage_path: data/knowledge
   context_max_chars: 6000
+  unlimited_ocr:
+    enabled: false
+    base_url: http://unlimited-ocr:10000
+    model: Unlimited-OCR
+    timeout_seconds: 1200
+    max_file_bytes: 20000000
+    max_parsed_chars: 5000000
+    max_pdf_pages: 40
+    max_total_pixels: 100000000
+    pdf_dpi: 150

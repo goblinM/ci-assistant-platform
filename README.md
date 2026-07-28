@@ -27,7 +27,7 @@ Redis/Celery、版本化 FAISS 知识索引以及 OpenAI-compatible 或本地规
 - `/api/v1/diagnoses/logs` 与 `/runs` 统一诊断入口
 - GitLab/Jenkins/GitHub Actions Provider、连接测试、只读工具和已验证 Webhook
 - PostgreSQL 业务持久化、Redis/Celery 异步任务与 Alembic 迁移
-- Markdown/JSON 知识上传、确定性本地 Embedding、版本化 FAISS 原子发布
+- Markdown/JSON/HTML/DOCX/PDF 知识上传、Unlimited-OCR PDF 解析、版本化 FAISS 原子发布
 - tenant/project/provider ACL 混合检索与真实 references
 - Bearer API Key 租户隔离、Secret Mask、结构化校验、降级和 Prometheus 指标
 - 18 Case GitLab/Jenkins 固定评测集及 Docker Compose 五服务部署
@@ -36,11 +36,11 @@ Redis/Celery、版本化 FAISS 知识索引以及 OpenAI-compatible 或本地规
 
 ```mermaid
 flowchart TD
-    A["Manual API / GitLab / Jenkins Webhook"] --> B["FastAPI + Tenant Auth"]
+    A["Manual API / GitLab / Jenkins / GitHub Webhook"] --> B["FastAPI + Tenant Auth"]
     B --> C["PostgreSQL: Event / Diagnosis"]
     B --> D["Redis / Celery Queue"]
     D --> E["Diagnosis Worker"]
-    E --> F["GitLab / Jenkins Provider"]
+    E --> F["GitLab / Jenkins / GitHub Provider"]
     E --> G["Log Mask + Extract"]
     G --> H["Tenant-scoped Hybrid Retrieval"]
     H --> I["Versioned FAISS Index"]
@@ -51,9 +51,12 @@ flowchart TD
     L --> M["Validated Diagnosis + References"]
     M --> C
 
-    N["Knowledge API"] --> O["PostgreSQL: Documents / Chunks"]
-    N --> P["Knowledge Worker"]
-    P --> I
+    N["Knowledge API"] --> O["Native HTML/DOCX Parser"]
+    N --> P["Unlimited-OCR PDF Service"]
+    O --> Q["PostgreSQL: Documents / Chunks"]
+    P --> Q
+    Q --> R["Knowledge Worker"]
+    R --> I
 ```
 
 ## 目录结构
@@ -219,7 +222,7 @@ make eval-rag
 
 ## 产品边界
 
-0.6.0 默认只分析和建议，不自动修改代码或重跑 Pipeline。部署方仍需提供最小权限
+0.6.1 默认只分析和建议，不自动修改代码或重跑 Pipeline。部署方仍需提供最小权限
 CI Token、TLS、网络出口策略、备份、镜像扫描和 API Key 轮换。Web 管理页、自动评论和
 人工审批后的写操作属于后续版本。
 
@@ -252,6 +255,5 @@ CI Token、TLS、网络出口策略、备份、镜像扫描和 API Key 轮换。
 
 - 增加用户反馈入口，沉淀 accepted/rejected/helpful 标签。
 - 引入 reranker 和 embedding cache，提高 RAG 命中率和性能。
-- 接入 PDF、DOCX、HTML 等更多知识文档格式。
 - 引入可配置且可降级的 Cross-Encoder/BGE Reranker。
 - 在人工审批边界内增加评论、Issue 和 Pipeline 重跑动作。

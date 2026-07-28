@@ -33,7 +33,10 @@ def mask_secrets(content: str) -> str:
     return masked
 
 
-def normalize_document(content: str, format: Literal["markdown", "json"]) -> str:
+def normalize_document(
+    content: str,
+    format: Literal["markdown", "json", "pdf", "docx", "html"],
+) -> str:
     """将 ``normalize_document`` 对应的数据规范化。"""
     if not content.strip():
         raise ValueError("document content cannot be empty")
@@ -75,7 +78,10 @@ def chunk_document(content: str, *, target_chars: int = 800) -> list[str]:
     return chunks
 
 
-def process_document(content: str, format: Literal["markdown", "json"]) -> ProcessedDocument:
+def process_document(
+    content: str,
+    format: Literal["markdown", "json", "pdf", "docx", "html"],
+) -> ProcessedDocument:
     """执行 ``process_document`` 对应的知识库处理流程。"""
     normalized = normalize_document(content, format)
     return ProcessedDocument(
@@ -83,4 +89,3 @@ def process_document(content: str, format: Literal["markdown", "json"]) -> Proce
         content_hash=hashlib.sha256(normalized.encode("utf-8")).hexdigest(),
         chunks=chunk_document(normalized),
     )
-

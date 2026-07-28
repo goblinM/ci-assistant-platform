@@ -13,6 +13,22 @@
 `127.0.0.1:15432`，只允许本机访问；可用 `POSTGRES_PORT` 调整本机端口。已有 PostgreSQL
 数据卷不会因为修改环境变量自动更新数据库角色密码，调整密码前应先完成备份和角色变更。
 
+## Unlimited-OCR
+
+PDF 解析使用独立 GPU 推理服务，不将 Unlimited-OCR 模型、CUDA 或
+`trust_remote_code` 放入 API/Worker 镜像。按官方说明部署固定版本的 vLLM/SGLang 服务后，
+设置：
+
+```text
+CI_ASSISTANT__KNOWLEDGE__UNLIMITED_OCR__ENABLED=true
+CI_ASSISTANT__KNOWLEDGE__UNLIMITED_OCR__BASE_URL=http://unlimited-ocr:10000
+CI_ASSISTANT__KNOWLEDGE__UNLIMITED_OCR__MODEL=Unlimited-OCR
+```
+
+生产环境应固定模型 revision 和容器 digest，禁止运行时从不受控来源下载代码。OCR 网络只
+允许 API 到推理服务，推理服务不应访问 PostgreSQL、Redis 或公网。HTML/DOCX 原生解析不
+依赖 OCR 服务；OCR 未启用时 PDF 上传返回 `SERVICE_UNAVAILABLE`。
+
 ## 升级
 
 1. 备份 PostgreSQL、知识卷和当前镜像版本。
@@ -58,5 +74,6 @@ docker-compose exec -T postgres \
 - API live 正常、ready 失败：分别检查 PostgreSQL/Redis 网络和凭据。
 - Worker 无任务：确认 `diagnosis`、`knowledge` 队列和 Redis broker 一致。
 - 文档未激活：检查 `ingestion_jobs.error` 和知识卷写权限。
+- PDF 解析失败：检查 Unlimited-OCR 地址、GPU 服务状态、页数/像素限制和请求超时。
 - Provider 失败：调用连接测试 API，检查最小只读 Token 权限。
 - 模型不可用：诊断会输出低置信度 fallback，并在 Trace 记录 `fallback_used`。

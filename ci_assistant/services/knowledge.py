@@ -8,7 +8,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ci_assistant.knowledge.processing import process_document
 from ci_assistant.persistence.entities import IngestionJob, KnowledgeDocument
 from ci_assistant.persistence.knowledge import KnowledgeRepository
-from ci_assistant.schemas.knowledge import CreateKnowledgeDocument
+from ci_assistant.schemas.knowledge import (
+    CreateKnowledgeDocument,
+    CreateParsedKnowledgeDocument,
+)
 
 
 @dataclass(frozen=True)
@@ -22,7 +25,7 @@ class KnowledgeService:
     async def create(
         self,
         session: AsyncSession,
-        payload: CreateKnowledgeDocument,
+        payload: CreateKnowledgeDocument | CreateParsedKnowledgeDocument,
     ) -> CreatedKnowledge:
         """创建 ``create`` 对应的领域对象或结果。"""
         processed = process_document(payload.content, payload.format)

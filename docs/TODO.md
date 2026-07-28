@@ -14,12 +14,13 @@
 - 将仍有价值的旧评测指标迁入 `ci_assistant`。
 - 在满足架构文档中的五项门槛后，单独评审兼容包退役。
 - 评估依赖锁定、SBOM、镜像扫描和依赖漏洞检查。
-- 评估更多知识格式、Reranker 和反馈闭环。
+- 评估 Reranker 和反馈闭环。
 
 ## 已完成
 
 - 2026-07-28 完成公共函数中文 Docstring 专项治理；ADOS 静态扫描缺口归零。
 - 2026-07-28 完成只读 GitHub Actions Provider 和统一 Provider 契约接入。
+- 2026-07-28 完成 HTML/DOCX 原生解析和 Unlimited-OCR PDF 接入。
 
 ## 暂不执行
 

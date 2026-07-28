@@ -1,8 +1,8 @@
 # CI 智能诊断平台开发跟进
 
 > 最后更新：2026-07-28
-> 当前阶段：M6 GitHub Actions Provider 完成
-> 目标版本：`0.6.0`
+> 当前阶段：M7 多格式知识解析完成
+> 目标版本：`0.6.1`
 
 ## 1. 状态说明
 
@@ -54,6 +54,7 @@
 | M4 知识平台 | 私有知识可上传、索引、检索和删除 | 已完成 |
 | M5 MVP 验收 | Docker Compose、测试、评测、安全文档完成 | 已完成 |
 | M6 GitHub Actions | GitHub Actions 进入统一只读 Provider 链路 | 已完成 |
+| M7 多格式知识解析 | HTML/DOCX 原生解析与 Unlimited-OCR PDF 接入 | 已完成 |
 
 ## 4. M0 设计冻结
 
@@ -154,19 +155,29 @@
 | M6-04 | Provider Manager 接线 | 已完成 | M6-02 | 配置、短期 Token 和共享 Secret 注入 |
 | M6-05 | 三 Provider 契约 | 已完成 | M6-02 | GitLab、Jenkins、GitHub 返回相同统一领域模型 |
 
-## 11. 后置事项
+## 11. M7 多格式知识解析
+
+| ID | 事项 | 状态 | 依赖 | 完成标准 |
+| --- | --- | --- | --- | --- |
+| M7-01 | 文件上传 API | 已完成 | M4 | PDF、DOCX、HTML 复用现有知识持久化和索引链路 |
+| M7-02 | HTML 原生解析 | 已完成 | M7-01 | 保留标题/正文，不执行脚本或加载外部资源 |
+| M7-03 | DOCX 原生解析 | 已完成 | M7-01 | 标题/段落提取和 ZIP Bomb 限制 |
+| M7-04 | PDF 安全渲染 | 已完成 | M7-01 | 文件、页数、DPI 和总像素限制 |
+| M7-05 | Unlimited-OCR Client | 已完成 | M7-04 | 独立 OpenAI-compatible GPU 服务和稳定错误边界 |
+
+## 12. 后置事项
 
 | 事项 | 状态 | 目标版本 |
 | --- | --- | --- |
 | GitHub Actions Provider | 已完成 | `0.6.0` |
-| PDF/DOCX/HTML 入库 | 后置 | `0.6.x` |
+| PDF/DOCX/HTML 入库 | 已完成 | `0.6.1` |
 | 模型 Reranker | 后置 | `0.6.x` |
 | Web 管理页面 | 后置 | `0.6.x` |
 | 自动评论 CI 结果 | 后置 | `0.7.x` |
 | 人工审批后重跑 | 后置 | `1.0` 前 |
 | Helm 和高可用部署 | 后置 | `1.0` 前 |
 
-## 12. 变更记录
+## 13. 变更记录
 
 | 日期 | 变更 | 结果 |
 | --- | --- | --- |
@@ -181,10 +192,11 @@
 | 2026-07-25 | 完成 M4 知识平台和诊断接线 | 文档异步入库、版本化 FAISS、ACL 混合检索、真实引用及删除后零召回闭环通过 |
 | 2026-07-25 | 完成 M5 容器验收 | 58 项测试、18 Case 固定评测、五服务 Compose、性能/安全/非 root/持久卷验证通过 |
 | 2026-07-28 | 完成 M6 GitHub Actions Provider | Run、Job、日志、Head Commit、HMAC Webhook 和三 Provider 契约测试通过 |
+| 2026-07-28 | 完成 M7 多格式知识解析 | HTML/DOCX 原生提取、PDF 安全渲染和 Unlimited-OCR Client 接入 |
 
-## 13. 下一步
+## 14. 下一步
 
-M0–M6 架构迁移及 GitHub Actions 只读接入已完成。后续继续 `0.6.x` 文档解析与
+M0–M7 架构迁移、GitHub Actions 和多格式文档解析已完成。后续继续 `0.6.x`
 Reranker 增强路线；旧
 `ci_analysis_demo` 仅作为兼容包保留，新服务入口和默认运行链路均为 `ci_assistant`。
 

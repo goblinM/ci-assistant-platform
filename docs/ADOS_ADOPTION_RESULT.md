@@ -234,3 +234,38 @@ Docstring 之外的 AST 变化为 0。
 
 唯一警告仍为 FastAPI TestClient 对当前 Starlette 适配层的弃用提示。验证使用 Mock
 Provider 数据，没有连接真实 GitHub 或触发外部 Workflow。
+
+## 0.6.1 多格式知识解析
+
+> 执行日期：2026-07-28
+> 基线：`fee34ac`
+
+### 实施内容
+
+- 新增 `POST /api/v1/knowledge/documents/files`，支持 PDF、DOCX 和 HTML 文件上传，并复用
+  现有租户鉴权、版本、去重、Secret Mask、Chunk、Provider ACL 和索引任务。
+- HTML 使用标准库提取标题和正文，忽略 script、style 和 noscript，不加载外部资源。
+- DOCX 使用标准库 ZIP/XML 解析，限制成员数、解压后大小和压缩比。
+- PDF 使用 PyMuPDF 在文件大小、页数、DPI 和总像素约束内渲染为 PNG，再调用独立
+  Unlimited-OCR OpenAI-compatible 服务。
+- Unlimited-OCR 默认关闭；未配置或服务不可用时返回稳定
+  `SERVICE_UNAVAILABLE`，不把模型、Torch、CUDA 或动态远程代码放入 API/Worker。
+- 版本更新为 0.6.1，并同步依赖真源、运行依赖、配置、架构、安全、API 和运维文档。
+
+没有新增数据库迁移，没有改变已有 Markdown/JSON API、知识索引格式或公开诊断 API。
+
+### 验证结果
+
+- 文档解析/上传/配置/依赖专项测试：`25 passed, 1 warning in 0.78s`。
+- 完整回归：`83 passed, 1 warning in 8.25s`。
+- PyMuPDF 渲染页数和像素限制通过可控模块替身验证。
+- Unlimited-OCR 多图片 OpenAI-compatible 请求和响应通过 MockTransport 验证。
+- `python3 -m compileall -q ci_assistant ci_analysis_demo`：通过。
+- ADOS 静态扫描：`missing_public_docstrings = 0`。
+- ADOS `validate_adoption.py`：`Passed`，无 warning、无 failure。
+- `git diff --check`：通过。
+
+本机没有安装 PyMuPDF，也没有可用的 Unlimited-OCR GPU 服务。尝试安装 PyMuPDF 时外部
+下载未获授权，因此没有执行真实 PDF 渲染或 PDF→Unlimited-OCR 端到端验收；部署前仍需在
+获准环境中安装锁定依赖、启动固定版本 GPU 服务并使用非敏感 PDF Fixture 验收。唯一测试
+警告仍为 FastAPI TestClient 对当前 Starlette 适配层的弃用提示。

@@ -18,6 +18,12 @@ class CreateKnowledgeDocument(BaseModel):
     license: str | None = Field(default=None, max_length=100)
 
 
+class CreateParsedKnowledgeDocument(CreateKnowledgeDocument):
+    """文件解析完成后使用的内部知识文档负载。"""
+
+    format: Literal["pdf", "docx", "html"]
+
+
 class KnowledgeDocumentView(BaseModel):
     model_config = {"from_attributes": True}
 

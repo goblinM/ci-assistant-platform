@@ -85,6 +85,21 @@ curl -X DELETE \
 JSON 文档将 `format` 改为 `json`，`content` 传递 JSON 字符串。更完整的制作规则见
 `knowledge_document_format.md`。
 
+PDF、DOCX 或 HTML 使用文件端点：
+
+```bash
+curl -X POST http://127.0.0.1:8080/api/v1/knowledge/documents/files \
+  -H "Authorization: Bearer ${CI_ASSISTANT_API_KEY}" \
+  -F "tenant_id=00000000-0000-0000-0000-000000000001" \
+  -F "provider=github" \
+  -F "title=GitHub Actions 排障手册" \
+  -F "source_type=customer" \
+  -F "file=@failure-guide.pdf;type=application/pdf"
+```
+
+HTML/DOCX 使用原生解析；PDF 需要先启用并连接独立 Unlimited-OCR 服务。接口返回 `202`
+后继续复用现有知识索引任务。
+
 ## Webhook
 
 ```bash

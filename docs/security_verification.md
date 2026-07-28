@@ -12,6 +12,8 @@
 - PostgreSQL 唯一键和 `ON CONFLICT` 保证 Webhook 幂等。
 - FAISS 检索强制 tenant/project/provider 过滤。
 - 容器使用 `ci-assistant` 非 root 用户。
+- HTML 解析不加载外部资源；DOCX 限制 ZIP 成员数、解压大小和压缩比。
+- PDF 限制文件大小、页数、DPI 和总像素，GPU OCR 与业务数据服务网络隔离。
 
 仍需由部署方负责：Token 最小权限、网络出口策略、TLS 终止、镜像漏洞扫描、备份加密和
 API Key 定期轮换。

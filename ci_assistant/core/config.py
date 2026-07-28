@@ -80,12 +80,35 @@ class RedisConfig(BaseModel):
     url: SecretStr = SecretStr("redis://localhost:6379/0")
 
 
+class UnlimitedOCRConfig(BaseModel):
+    """独立 Unlimited-OCR 推理服务和文档资源限制。"""
+
+    enabled: bool = False
+    base_url: str = "http://unlimited-ocr:10000"
+    model: str = "Unlimited-OCR"
+    timeout_seconds: float = Field(default=1200, gt=0, le=3600)
+    max_file_bytes: int = Field(default=20_000_000, ge=1_000_000)
+    max_parsed_chars: int = Field(default=5_000_000, ge=100_000)
+    max_pdf_pages: int = Field(default=40, ge=1, le=200)
+    max_total_pixels: int = Field(default=100_000_000, ge=1_000_000)
+    pdf_dpi: int = Field(default=150, ge=72, le=300)
+
+    @field_validator("base_url")
+    @classmethod
+    def validate_base_url(cls, value: str) -> str:
+        """校验 Unlimited-OCR 服务 URL。"""
+        if not value.startswith(("http://", "https://")):
+            raise ValueError("Unlimited-OCR base_url must start with http:// or https://")
+        return value.rstrip("/")
+
+
 class KnowledgeConfig(BaseModel):
     embedding_model: str = "local-hashing-v1"
     embedding_dimension: int = Field(default=384, ge=64, le=4096)
     index_backend: Literal["faiss"] = "faiss"
     storage_path: Path = Path("data/knowledge")
     context_max_chars: int = Field(default=6000, ge=1000)
+    unlimited_ocr: UnlimitedOCRConfig = Field(default_factory=UnlimitedOCRConfig)
 
 
 class SecurityConfig(BaseModel):

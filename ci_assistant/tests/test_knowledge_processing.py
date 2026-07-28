@@ -1,8 +1,11 @@
 import json
+from uuid import UUID
 
 import pytest
+from pydantic import ValidationError
 
 from ci_assistant.knowledge.processing import process_document
+from ci_assistant.schemas.knowledge import CreateKnowledgeDocument
 
 
 def test_markdown_processing_masks_secrets_and_chunks_by_structure() -> None:
@@ -35,3 +38,13 @@ def test_invalid_json_is_rejected() -> None:
     with pytest.raises(ValueError, match="invalid JSON"):
         process_document("{", "json")
 
+
+def test_json_document_api_does_not_bypass_file_parsers() -> None:
+    """验证原 JSON 文档接口不能直接声明 PDF 格式。"""
+    with pytest.raises(ValidationError):
+        CreateKnowledgeDocument(
+            tenant_id=UUID("00000000-0000-0000-0000-000000000001"),
+            title="Bypass attempt",
+            format="pdf",
+            content="not a parsed PDF",
+        )

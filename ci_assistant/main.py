@@ -20,8 +20,9 @@ from ci_assistant.api.health import ReadinessCheck, router as health_router
 from ci_assistant.api.middleware import RequestIDMiddleware
 from ci_assistant.api.auth import TenantAuthMiddleware
 from ci_assistant.api.webhooks import router as webhooks_router
-from ci_assistant.core.config import load_settings
+from ci_assistant.core.config import UnlimitedOCRConfig, load_settings
 from ci_assistant.core.errors import PlatformError
+from ci_assistant.knowledge.document_parsers import DocumentParser
 from ci_assistant.persistence.database import Database
 from ci_assistant.providers.manager import build_provider_manager
 from ci_assistant.services.bootstrap import sync_configuration
@@ -59,6 +60,9 @@ def create_app(
         application.state.database = database
         application.state.redis = redis
         application.state.provider_manager = build_provider_manager(settings)
+        application.state.document_parser = DocumentParser(
+            settings.knowledge.unlimited_ocr
+        )
         from ci_assistant.workers.celery_app import app as celery_app
 
         application.state.task_dispatcher = (
@@ -80,11 +84,12 @@ def create_app(
 
     app = FastAPI(
         title="CI Assistant Platform",
-        version="0.6.0",
+        version="0.6.1",
         description="Private-deployable CI failure diagnosis platform.",
         lifespan=lifespan,
     )
     app.state.readiness_checks = dict(readiness_checks or {})
+    app.state.document_parser = DocumentParser(UnlimitedOCRConfig())
     app.add_middleware(TenantAuthMiddleware)
     app.add_middleware(MetricsMiddleware)
     app.add_middleware(RequestIDMiddleware)

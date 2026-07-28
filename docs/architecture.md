@@ -1,19 +1,19 @@
 # CI Assistant Platform 架构
 
-本文描述 `ci_assistant` 0.6.0 的实际运行架构。旧包 `ci_analysis_demo` 只承担兼容职责，
+本文描述 `ci_assistant` 0.6.1 的实际运行架构。旧包 `ci_analysis_demo` 只承担兼容职责，
 不再作为新功能的目标架构。
 
 ## 系统数据流
 
 ```mermaid
 flowchart TD
-    A["Manual API / GitLab / Jenkins Webhook"] --> B["FastAPI"]
+    A["Manual API / GitLab / Jenkins / GitHub Webhook"] --> B["FastAPI"]
     B --> C["Request ID + Tenant Auth"]
     C --> D["PostgreSQL"]
     C --> E["Redis / Celery"]
     E --> F["Diagnosis Worker"]
 
-    F --> G["GitLab / Jenkins Provider"]
+    F --> G["GitLab / Jenkins / GitHub Provider"]
     F --> H["Log Preprocessor"]
     H --> I["Tenant-scoped Hybrid Retriever"]
     I --> J["Versioned FAISS"]
@@ -24,14 +24,17 @@ flowchart TD
     M --> N["Pydantic Diagnosis Result"]
     N --> D
 
-    O["Knowledge API"] --> P["PostgreSQL Documents / Chunks"]
-    O --> Q["Knowledge Worker"]
-    Q --> J
+    O["Knowledge File API"] --> P["Native HTML/DOCX Parser"]
+    O --> Q["Unlimited-OCR PDF Service"]
+    P --> R["PostgreSQL Documents / Chunks"]
+    Q --> R
+    R --> S["Knowledge Worker"]
+    S --> J
 ```
 
-同步 API 只负责校验、持久化和派发任务；日志诊断、Provider 调用与知识索引在 Celery
-Worker 中执行。诊断结果、引用和 Trace 写入 PostgreSQL，Redis 只保存队列及短期任务结果，
-FAISS 保存版本化向量索引。
+同步 API 负责校验、文档受限解析、持久化和派发任务；日志诊断、Provider 调用与知识索引
+在 Celery Worker 中执行。PDF 的 GPU 推理由独立 Unlimited-OCR 服务完成。诊断结果、引用和
+Trace 写入 PostgreSQL，Redis 只保存队列及短期任务结果，FAISS 保存版本化向量索引。
 
 ## 运行组件
 
@@ -44,6 +47,7 @@ FAISS 保存版本化向量索引。
 | Vector index | FAISS | 租户级版本索引和原子 `CURRENT` 切换 |
 | Migration | Alembic | PostgreSQL Schema 版本管理 |
 | AI gateway | OpenAI-compatible / Rule | 结构化诊断和离线降级 |
+| Document OCR | Unlimited-OCR（独立 GPU 服务） | PDF 多页视觉解析，不进入 API/Worker 镜像 |
 
 Docker Compose 定义 `api`、`worker`、`migrate`、`postgres` 和 `redis` 五个服务。
 
@@ -79,12 +83,17 @@ Tool Result 在 Prompt 中均标记为不可信证据。单个 Tool 或 RAG 失�
 知识正文、版本、来源和 ACL 位于 PostgreSQL；Chunk 向量位于 FAISS。检索必须同时携带
 tenant/project/provider 过滤条件。引用由真实检索结果覆盖，模型不能自行生成引用来源。
 
+HTML 和 DOCX 在 API 进程中执行受限原生文本提取；HTML 不请求外部资源，DOCX 检查成员数、
+解压后大小和压缩比。PDF 由 PyMuPDF 在页数、DPI 和总像素限制内渲染，再发送给独立
+Unlimited-OCR 服务。解析后的文本统一经过 Secret Mask、Chunk、PostgreSQL 和 FAISS
+链路；模型权重、CUDA 和 `trust_remote_code` 不进入平台主镜像。
+
 ### 安全边界
 
 - 生产 API Key 绑定租户，管理连接只允许管理员 Key。
 - GitLab/Jenkins Webhook 必须验证共享 Secret；GitHub Webhook 必须验证
   `X-Hub-Signature-256` HMAC-SHA256。
-- 默认 Tool 全部只读；写操作不属于 0.6.0 自动执行范围。
+- 默认 Tool 全部只读；写操作不属于 0.6.1 自动执行范围。
 - 容器使用非 root 用户。
 - PostgreSQL 的本地调试端口只绑定 `127.0.0.1`，生产密码不允许使用 Compose 默认值。
 

@@ -13,6 +13,7 @@ from ci_assistant.api.exception_handlers import (
     unhandled_error_handler,
 )
 from ci_assistant.api.diagnoses import router as diagnoses_router
+from ci_assistant.api.feedback import router as feedback_router
 from ci_assistant.api.connections import router as connections_router
 from ci_assistant.api.knowledge import router as knowledge_router
 from ci_assistant.api.observability import MetricsMiddleware, router as metrics_router
@@ -84,7 +85,7 @@ def create_app(
 
     app = FastAPI(
         title="CI Assistant Platform",
-        version="0.6.1",
+        version="0.6.2",
         description="Private-deployable CI failure diagnosis platform.",
         lifespan=lifespan,
     )
@@ -97,6 +98,7 @@ def create_app(
     app.add_exception_handler(Exception, unhandled_error_handler)
     app.include_router(health_router)
     app.include_router(diagnoses_router)
+    app.include_router(feedback_router)
     app.include_router(connections_router)
     app.include_router(knowledge_router)
     app.include_router(metrics_router)

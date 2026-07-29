@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ci-assistant-platform"
-version = "0.6.1"
+version = "0.6.2"
 description = "Private-deployable AI-assisted CI failure diagnosis platform"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -34,6 +34,9 @@ dev = [
     "pytest>=8",
     "pytest-asyncio>=0.23",
 ]
+reranker = [
+    "sentence-transformers>=3,<6",
+]
 legacy = [
     "pandas",
     "sentence-transformers",
@@ -49,7 +52,7 @@ include = ["ci_assistant*", "ci_analysis_demo*"]
 ci_analysis_demo = [
     "knowledge_docs/*.json",
 ]
-ci_assistant = ["py.typed", "evaluation_cases.json"]
+ci_assistant = ["py.typed", "evaluation_cases.json", "ranking_evaluation_cases.json"]
 
 [tool.pytest.ini_options]
 addopts = "-ra"

@@ -269,3 +269,81 @@ Provider 数据，没有连接真实 GitHub 或触发外部 Workflow。
 下载未获授权，因此没有执行真实 PDF 渲染或 PDF→Unlimited-OCR 端到端验收；部署前仍需在
 获准环境中安装锁定依赖、启动固定版本 GPU 服务并使用非敏感 PDF Fixture 验收。唯一测试
 警告仍为 FastAPI TestClient 对当前 Starlette 适配层的弃用提示。
+
+## PROJECT_ONBOARDING 补齐
+
+> 执行日期：2026-07-28
+
+- 新增 `docs/PROJECT_ONBOARDING.md`，基于当前 FastAPI、Celery、Provider、Webhook
+  投递审计、PostgreSQL、Redis、知识解析和 FAISS 真实链路提供快速接手入口。
+- 增量更新 `AGENTS.md`，加入 Onboarding、开发、待办、工程决策、排障和 Changelog
+  文档导航；保留原有主包、兼容包、安全和验证约束。
+- 未移动目录，未修改业务代码、公开 API、依赖、数据库结构或 CI/CD。
+- ADOS `validate_adoption.py` 验证结果为 `Passed`，14 项检查通过；`git diff --check`
+  通过。
+
+## 0.6.2 Cross-Encoder/BGE Reranker
+
+> 执行日期：2026-07-29
+
+### 实施内容
+
+- 新增 `disabled | local | http` Cross-Encoder/BGE Reranker。`local` 使用可选
+  SentenceTransformers 依赖并在 Worker 进程内懒加载、缓存模型；`http` 复用独立
+  `/rerank` 服务。
+- 启用后按配置扩大 Hybrid 候选集；HTTP 后端兼容 `results/relevance_score` 与
+  `data/score`，本地后端在线程中执行 `CrossEncoder.predict`。
+- 两种后端统一校验候选映射和有限数值分数，保留原 `hybrid_score`；依赖缺失、模型加载、
+  推理、网络、超时、HTTP 或非法响应均降级到原 Hybrid 排序。
+- 版本更新为 0.6.2，并同步配置模板、README、架构、安全、运维、RAG、Onboarding、
+  Changelog、TODO 和开发跟踪文档。
+
+没有修改公开诊断 API、Provider Protocol、数据库结构或知识索引格式，没有安装
+SentenceTransformers，也没有启动外部 Reranker 服务。
+
+### 验证结果
+
+- Reranker、配置、Hybrid、Worker、版本和依赖专项测试：`24 passed`。
+- 完整回归：`98 passed, 1 warning in 7.62s`。
+- `python -m compileall -q ci_assistant ci_analysis_demo`：通过。
+- ADOS 静态扫描：`missing_public_docstrings = 0`，无 Python 解析错误。
+- ADOS `validate_adoption.py`：`Passed`，14 项检查全部通过。
+- `git diff --check`：通过。
+
+唯一警告仍为 FastAPI TestClient 对当前 Starlette 适配层的弃用提示。HTTP 请求通过
+`httpx.MockTransport` 验证，本地 CrossEncoder 使用确定性模型替身验证了线程推理、排序、
+进程内缓存、依赖缺失降级和后端工厂。由于没有安装真实 SentenceTransformers 模型，也没有
+配置外部 BGE 服务，本次未执行真实模型排序质量和性能验收；后续需使用固定评测集比较
+Recall@k、MRR、延迟、内存/显存和降级率。
+
+## 0.6.2 排序评测、反馈闭环与 Embedding cache
+
+> 执行日期：2026-07-29
+
+### 实施内容
+
+- 新增主平台固定离线排序评测，比较 Hybrid 与 Reranker 的 Recall@1/3、MRR、Metadata
+  hit rate 和 Reference precision；评测不加载外部模型或访问网络。
+- 新增租户隔离的诊断反馈写入、单条查询和汇总接口。反馈按诊断幂等更新，评论写入前执行
+  Secret Mask，不自动触发训练、知识入库或 CI 写操作。
+- 新增 `diagnosis_feedback` 表及追加式 Alembic revision `20260729_0004`，保留历史迁移。
+- 新增本地 SQLite embedding cache，cache key 包含模型参数和文本 SHA-256，不保存原文；
+  支持批量命中、容量回收及数据库故障降级。
+
+没有修改公开诊断 API、Provider Protocol 或知识索引格式，没有连接真实 Provider、外部
+Reranker 或模型服务。
+
+### 验证结果
+
+- 新增功能与相关回归：`17 passed, 1 warning`；完整回归：`108 passed, 1 warning`。
+- 离线排序基线：Hybrid/Reranker Recall@1 为 `0.333/1.0`，MRR 为 `0.611/1.0`。
+- Alembic 离线 SQL 和真实 Compose PostgreSQL 均到达 `20260729_0004`，
+  `diagnosis_feedback` 表存在。
+- 更新后的 API/Worker 容器启动成功；ready 中 PostgreSQL、Redis 均为 `ok`，OpenAPI
+  包含反馈写入/查询与汇总路由。
+- ADOS 静态扫描 `missing_public_docstrings = 0`；`validate_adoption.py` 为 `Passed`，
+  14 项检查通过；`git diff --check` 通过。
+
+唯一测试警告为 FastAPI TestClient 对当前 Starlette 适配层的弃用提示。本次离线排序数据为
+确定性契约样例，不能代表真实 BGE 模型质量；后续仍需使用固定模型 revision 和脱敏知识集
+建立质量、延迟及资源基线。

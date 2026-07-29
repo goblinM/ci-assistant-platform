@@ -10,9 +10,10 @@ from ci_assistant.core.errors import ErrorCode
 from ci_assistant.core.metrics import DIAGNOSIS_TASKS
 from ci_assistant.diagnosis.orchestrator import DiagnosisOrchestrator
 from ci_assistant.domain.ci import RunStatus
-from ci_assistant.knowledge.embeddings import HashingEmbedder
+from ci_assistant.knowledge.embeddings import build_embedder
 from ci_assistant.knowledge.index import FaissIndexStore
 from ci_assistant.knowledge.retrieval import HybridRetriever
+from ci_assistant.knowledge.reranking import build_reranker, rerank_with_fallback
 from ci_assistant.llm.gateway import OpenAIDiagnosisGateway, RuleBasedDiagnosisGateway
 from ci_assistant.persistence.database import Database
 from ci_assistant.persistence.diagnoses import DiagnosisRepository
@@ -84,8 +85,16 @@ async def _diagnose(diagnosis_id: str) -> dict[str, Any]:
                         jobs[0] if jobs else None,
                     )
                     job_id = failed.job_id if failed else None
-                if job_id and project_ref:
-                    log = (await provider.get_job_log(project_ref, job_id)).content
+                if (
+                    job_id
+                    and project_ref
+                    and context.get("diagnostic_reason") != "runner_unavailable"
+                ):
+                    fetched_log = (
+                        await provider.get_job_log(project_ref, job_id)
+                    ).content
+                    if fetched_log:
+                        log = fetched_log
 
             gateway = (
                 RuleBasedDiagnosisGateway()
@@ -95,22 +104,37 @@ async def _diagnose(diagnosis_id: str) -> dict[str, Any]:
             tenant_id = str(diagnosis.tenant_id)
             project_id = str(diagnosis.project_id) if diagnosis.project_id else None
             provider_type = provider.provider_type if provider else context.get("provider")
-            embedder = HashingEmbedder(settings.knowledge.embedding_dimension)
+            embedder = build_embedder(settings.knowledge)
             store = FaissIndexStore(
                 settings.knowledge.storage_path / tenant_id,
                 settings.knowledge.embedding_dimension,
             )
             hybrid = HybridRetriever(store)
+            # reranker
+            reranker = build_reranker(settings.knowledge.reranker)
 
             async def retrieve(query: str) -> list[Reference]:
                 """按查询条件检索知识数据。"""
                 vector = embedder.encode([query])[0]
-                matches = hybrid.retrieve(
+                final_top_k = 5
+                candidates = hybrid.retrieve(
                     query_vector=vector,
                     query_text=query,
                     tenant_id=tenant_id,
                     project_id=project_id,
                     provider=provider_type,
+                    top_k=(
+                        final_top_k
+                        * settings.knowledge.reranker.candidate_multiplier
+                        if reranker is not None
+                        else final_top_k
+                    ),
+                )
+                matches = await rerank_with_fallback(
+                    reranker,
+                    query,
+                    candidates,
+                    top_k=final_top_k,
                 )
                 return [
                     Reference(

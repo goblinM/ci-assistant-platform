@@ -4,10 +4,23 @@
 
 ## Unreleased
 
+- 增加 Webhook 全投递脱敏审计和 GitLab 无匹配 Runner 诊断。
+- 新增 ADOS `PROJECT_ONBOARDING.md` 快速接手入口。
 - 建立 GitHub Actions 测试、编译和 Alembic 离线迁移质量门。
 - 补齐 ADOS 开发、待办、决策、排障和变更记录入口。
 - 补充 PostgreSQL/FAISS 备份恢复和治理说明。
 - 完成 256 处公共函数中文 Docstring 专项治理，静态扫描缺口归零。
+
+## 0.6.2 — 2026-07-29
+
+- 增加主平台离线排序评测及 Hybrid/Reranker 指标对比。
+- 增加租户隔离的诊断反馈写入、查询和聚合 API。
+- 增加不保存原文、故障可降级的本地 SQLite embedding cache。
+- 增加 `disabled | local | http` Cross-Encoder/BGE Reranker 后端，默认关闭。
+- 本地后端使用可选 SentenceTransformers 依赖，按 Worker 进程懒加载并缓存模型。
+- Hybrid Search 在启用 Reranker 时扩大候选集，重排后保留原 `hybrid_score`。
+- Reranker 网络、超时、HTTP 和响应契约异常自动降级到原 Hybrid 排序。
+- 默认平台镜像不增加 SentenceTransformers、Torch、CUDA 或模型权重。
 
 ## 0.6.1 — 2026-07-28
 

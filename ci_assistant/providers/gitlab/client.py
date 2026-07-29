@@ -49,6 +49,16 @@ class GitLabClient:
         project = quote(project_ref, safe="")
         return (await self._get(f"/api/v4/projects/{project}/pipelines/{run_id}/jobs")).json()
 
+    async def list_project_runners(self, project_ref: str) -> list[dict]:
+        """列出项目可用的 Runner，用于识别无匹配 Runner 的排队作业。"""
+        project = quote(project_ref, safe="")
+        return (
+            await self._get(
+                f"/api/v4/projects/{project}/runners",
+                {"status": "online", "per_page": 100},
+            )
+        ).json()
+
     async def get_job(self, project_ref: str, job_id: str) -> dict:
         """获取 ``get_job`` 对应的数据。"""
         project = quote(project_ref, safe="")
@@ -64,4 +74,3 @@ class GitLabClient:
         project = quote(project_ref, safe="")
         params = {"ref_name": ref_name} if ref_name else None
         return (await self._get(f"/api/v4/projects/{project}/repository/commits", params)).json()
-

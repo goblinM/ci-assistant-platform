@@ -13,7 +13,7 @@ def test_package_exposes_target_version() -> None:
         pyproject,
     )
 
-    assert ci_assistant.__version__ == "0.6.1"
+    assert ci_assistant.__version__ == "0.6.2"
     assert declared_version is not None
     assert declared_version.group(1) == ci_assistant.__version__
 

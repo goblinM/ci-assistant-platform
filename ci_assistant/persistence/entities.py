@@ -3,7 +3,19 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import BigInteger, ForeignKey, String, Text, UniqueConstraint
+from datetime import datetime
+
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -57,6 +69,39 @@ class CIEvent(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
 
 
+class WebhookDelivery(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """记录每次 Webhook HTTP 投递的脱敏审计结果。"""
+
+    __tablename__ = "webhook_deliveries"
+    __table_args__ = (
+        Index(
+            "ix_webhook_deliveries_connection_received",
+            "connection_id",
+            "created_at",
+        ),
+        Index("ix_webhook_deliveries_payload_hash", "payload_hash"),
+    )
+
+    tenant_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("tenants.id", ondelete="SET NULL")
+    )
+    connection_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("ci_connections.id", ondelete="SET NULL")
+    )
+    connection_external_id: Mapped[str] = mapped_column(String(100))
+    provider: Mapped[str] = mapped_column(String(30))
+    request_id: Mapped[str] = mapped_column(String(100))
+    provider_delivery_id: Mapped[str | None] = mapped_column(String(300))
+    signature_valid: Mapped[bool | None] = mapped_column(Boolean)
+    processing_status: Mapped[str] = mapped_column(String(30))
+    http_status: Mapped[int | None] = mapped_column(Integer)
+    event_type: Mapped[str | None] = mapped_column(String(100))
+    external_event_id: Mapped[str | None] = mapped_column(String(300))
+    payload_hash: Mapped[str] = mapped_column(String(64))
+    error_code: Mapped[str | None] = mapped_column(String(100))
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class Diagnosis(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "diagnoses"
 
@@ -69,6 +114,22 @@ class Diagnosis(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     source: Mapped[str] = mapped_column(String(30))
     result: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     error_code: Mapped[str | None] = mapped_column(String(100))
+
+
+class DiagnosisFeedback(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """保存用户对单条诊断的结构化反馈。"""
+
+    __tablename__ = "diagnosis_feedback"
+    __table_args__ = (UniqueConstraint("diagnosis_id"),)
+
+    diagnosis_id: Mapped[UUID] = mapped_column(
+        ForeignKey("diagnoses.id", ondelete="CASCADE")
+    )
+    tenant_id: Mapped[UUID] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"))
+    rating: Mapped[str] = mapped_column(String(30))
+    accepted_suggestion: Mapped[bool | None] = mapped_column(Boolean)
+    corrected_error_type: Mapped[str | None] = mapped_column(String(100))
+    comment: Mapped[str | None] = mapped_column(String(2000))
 
 
 class AnalysisTrace(UUIDPrimaryKeyMixin, TimestampMixin, Base):

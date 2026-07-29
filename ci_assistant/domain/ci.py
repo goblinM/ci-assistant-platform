@@ -71,4 +71,4 @@ class CIEvent(BaseModel):
     run_id: str | None = None
     job_id: str | None = None
     status: RunStatus = RunStatus.UNKNOWN
-
+    diagnostic_reason: str | None = None

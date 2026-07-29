@@ -3,8 +3,13 @@
 本项目遵循 ADOS 工程标准。修改前先阅读本文件及下列真实项目文档：
 
 - 项目用途、安装和常用命令：`README.md`
+- 快速接手顺序、真实入口和修改导航：`docs/PROJECT_ONBOARDING.md`
 - 当前架构和兼容边界：`docs/architecture.md`
+- 开发环境和验证命令：`docs/DEVELOPMENT.md`
 - 开发设计与迁移原则：`docs/ci_assistant_platform_development.md`
+- 当前治理与产品待办：`docs/TODO.md`
+- 已接受工程决策：`docs/DECISIONS.md`
+- 排障与变更记录：`docs/DEBUG.md`、`docs/CHANGELOG.md`
 - 当前里程碑与后续事项：`docs/ci_assistant_platform_tracker.md`
 - 安全要求：`docs/security_verification.md`
 

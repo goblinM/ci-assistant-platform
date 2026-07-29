@@ -1,4 +1,4 @@
-.PHONY: setup test run dev migrate compose-up compose-down eval eval-rag docker-build docker-run
+.PHONY: setup test run dev migrate compose-up compose-down eval eval-rag eval-ranking docker-build docker-run
 
 APP_PORT ?= 8080
 IMAGE_NAME ?= ai-ci-assistant
@@ -31,6 +31,9 @@ eval:
 
 eval-rag:
 	python -c "import asyncio; from ci_analysis_demo.scripts.evaluate_ci_assistant import main; asyncio.run(main(True))"
+
+eval-ranking:
+	python -m ci_assistant.scripts.evaluate_ranking
 
 docker-build:
 	docker build -t $(IMAGE_NAME) .

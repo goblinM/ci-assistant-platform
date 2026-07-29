@@ -48,7 +48,7 @@ def ingest_document(self, document_id: str) -> dict[str, Any]:
 
 
 async def _index_document(document_id: str) -> dict[str, Any]:
-    from ci_assistant.knowledge.embeddings import HashingEmbedder
+    from ci_assistant.knowledge.embeddings import build_embedder
 
     settings = load_settings()
     database = Database.from_config(settings.database)
@@ -59,7 +59,7 @@ async def _index_document(document_id: str) -> dict[str, Any]:
                 return {"document_id": document_id, "status": "not_found"}
             if document.status != "deleted":
                 document.status = "indexing"
-            model = HashingEmbedder(settings.knowledge.embedding_dimension)
+            model = build_embedder(settings.knowledge)
             indexer = KnowledgeIndexer(
                 settings.knowledge.storage_path,
                 lambda texts: model.encode(texts, normalize_embeddings=True),
@@ -110,13 +110,13 @@ def reindex_knowledge(self, tenant_id: str) -> dict[str, Any]:
 
 
 async def _reindex_tenant(tenant_id: str) -> dict[str, Any]:
-    from ci_assistant.knowledge.embeddings import HashingEmbedder
+    from ci_assistant.knowledge.embeddings import build_embedder
 
     settings = load_settings()
     database = Database.from_config(settings.database)
     try:
         async with database.session() as session:
-            model = HashingEmbedder(settings.knowledge.embedding_dimension)
+            model = build_embedder(settings.knowledge)
             indexer = KnowledgeIndexer(
                 settings.knowledge.storage_path,
                 lambda texts: model.encode(texts, normalize_embeddings=True),

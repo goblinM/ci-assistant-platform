@@ -20,7 +20,7 @@
 | P1 | RAG + Tool 共享上下文 | DONE | 一次识别 `primary_error`，同时传给 RAG 和 Tool 候选过滤 |
 | 验证 | 单元测试 | DONE | 覆盖 query、rewrite、metadata、规则重排、RAGResult、trace 和 context budget |
 | 验证 | 离线 RAG 评测 | TODO | 增加 Recall@1/3、MRR、Metadata Hit Rate、Reference Precision |
-| 演进 | 专用 Reranker | TODO | 评测证明规则重排不足后，再接 Cross-Encoder / BGE / Cohere |
+| 演进 | 专用 Reranker | DONE | 0.6.2 支持本地 SentenceTransformers 与独立 HTTP 后端 |
 | 演进 | 文档 chunk | TODO | 知识文档增长或单文档明显超长后再拆 chunk，并保留 parent_doc_id |
 | 演进 | 持久化向量索引 | TODO | 当前启动时重建 FAISS；文档规模扩大后改为离线构建和版本化加载 |
 
@@ -34,6 +34,7 @@ raw log
   -> semantic / keyword / metadata retrieval
   -> merge + deduplicate
   -> rule rerank
+  -> optional Cross-Encoder / BGE rerank
   -> RAGResult top-k
   -> context budget
   -> LLM + ToolResult
@@ -56,6 +57,8 @@ RAG_CONTEXT_MAX_CHARS=6000
 - `2026-07-16`：完成轻量 Hybrid Search、多路召回、规则重排和 query rewrite。
 - `2026-07-16`：将 `primary_error` 作为 RAG 与 Tool Calling 的共享分析上下文。
 - `2026-07-16`：新增 6 个 RAG 单元测试并通过全量测试。
+- `2026-07-29`：主平台 0.6.2 接入 disabled/local/http Cross-Encoder/BGE Reranker，
+  本地模型懒加载缓存，两种后端均支持 Hybrid 安全降级。
 
 ## 原始设计记录
 

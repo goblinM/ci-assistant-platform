@@ -60,3 +60,74 @@ def test_gitlab_webhook_rejects_wrong_secret() -> None:
     else:
         raise AssertionError("invalid webhook token was accepted")
 
+
+def test_gitlab_pending_pipeline_detects_unmatched_runner_tags() -> None:
+    """验证 pending 作业没有兼容在线 Runner 时生成诊断原因。"""
+    client = AsyncMock()
+    client.list_pipeline_jobs.return_value = [
+        {
+            "id": 9,
+            "name": "test",
+            "status": "pending",
+            "tag_list": ["docker"],
+        }
+    ]
+    client.list_project_runners.return_value = [
+        {
+            "id": 3,
+            "status": "online",
+            "paused": False,
+            "run_untagged": True,
+            "tag_list": ["shell"],
+        }
+    ]
+    provider = GitLabProvider("main", client, webhook_secret="secret")
+
+    event = asyncio.run(
+        provider.parse_webhook(
+            {
+                "object_kind": "pipeline",
+                "project": {"path_with_namespace": "group/project"},
+                "object_attributes": {"id": 42, "status": "pending"},
+            }
+        )
+    )
+
+    assert event.status == RunStatus.QUEUED
+    assert event.diagnostic_reason == "runner_unavailable"
+
+
+def test_gitlab_pending_pipeline_accepts_compatible_runner() -> None:
+    """验证存在兼容在线 Runner 时 pending 流水线保持正常排队。"""
+    client = AsyncMock()
+    client.list_pipeline_jobs.return_value = [
+        {
+            "id": 9,
+            "name": "test",
+            "status": "pending",
+            "tag_list": ["docker"],
+        }
+    ]
+    client.list_project_runners.return_value = [
+        {
+            "id": 3,
+            "status": "online",
+            "paused": False,
+            "run_untagged": False,
+            "tag_list": ["docker", "linux"],
+        }
+    ]
+    provider = GitLabProvider("main", client, webhook_secret="secret")
+
+    event = asyncio.run(
+        provider.parse_webhook(
+            {
+                "object_kind": "pipeline",
+                "project": {"path_with_namespace": "group/project"},
+                "object_attributes": {"id": 42, "status": "pending"},
+            }
+        )
+    )
+
+    assert event.status == RunStatus.QUEUED
+    assert event.diagnostic_reason is None

@@ -78,6 +78,38 @@ def test_unlimited_ocr_rejects_non_http_service_url() -> None:
         )
 
 
+def test_reranker_nested_configuration_is_supported() -> None:
+    """验证 Cross-Encoder/BGE Reranker 可通过嵌套环境变量配置。"""
+    settings = load_settings(
+        environ={
+            "CI_ASSISTANT__KNOWLEDGE__RERANKER__BACKEND": "local",
+            "CI_ASSISTANT__KNOWLEDGE__RERANKER__BASE_URL": (
+                "http://reranker.internal:8080"
+            ),
+            "CI_ASSISTANT__KNOWLEDGE__RERANKER__MODEL": (
+                "BAAI/bge-reranker-v2-m3"
+            ),
+            "CI_ASSISTANT__KNOWLEDGE__RERANKER__CANDIDATE_MULTIPLIER": "6",
+        }
+    )
+
+    assert settings.knowledge.reranker.backend == "local"
+    assert settings.knowledge.reranker.base_url == "http://reranker.internal:8080"
+    assert settings.knowledge.reranker.candidate_multiplier == 6
+
+
+def test_reranker_rejects_non_http_service_url() -> None:
+    """验证 Reranker 拒绝本地文件等非 HTTP 服务地址。"""
+    with pytest.raises(ValidationError, match="base_url must start"):
+        load_settings(
+            environ={
+                "CI_ASSISTANT__KNOWLEDGE__RERANKER__BASE_URL": (
+                    "file:///models/bge"
+                )
+            }
+        )
+
+
 def test_connection_ids_must_be_unique(tmp_path: Path) -> None:
     """验证 ``test_connection_ids_must_be_unique`` 所描述的预期行为。"""
     config_path = tmp_path / "config.yml"

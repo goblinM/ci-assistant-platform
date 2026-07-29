@@ -102,13 +102,50 @@ class UnlimitedOCRConfig(BaseModel):
         return value.rstrip("/")
 
 
+class RerankerConfig(BaseModel):
+    """Cross-Encoder/BGE 本地或独立服务配置。"""
+
+    backend: Literal["disabled", "local", "http"] = "disabled"
+    base_url: str = "http://reranker:8080"
+    endpoint: str = "/rerank"
+    model: str = "BAAI/bge-reranker-v2-m3"
+    api_key: SecretStr = SecretStr("")
+    timeout_seconds: float = Field(default=15, gt=0, le=120)
+    candidate_multiplier: int = Field(default=4, ge=2, le=20)
+    device: str = "cpu"
+    batch_size: int = Field(default=16, ge=1, le=256)
+    max_length: int = Field(default=512, ge=64, le=8192)
+    revision: str | None = None
+    local_files_only: bool = False
+
+    @field_validator("base_url")
+    @classmethod
+    def validate_base_url(cls, value: str) -> str:
+        """校验 Reranker 服务 URL。"""
+        if not value.startswith(("http://", "https://")):
+            raise ValueError("Reranker base_url must start with http:// or https://")
+        return value.rstrip("/")
+
+    @field_validator("endpoint")
+    @classmethod
+    def validate_endpoint(cls, value: str) -> str:
+        """校验 Reranker 服务端点为站内绝对路径。"""
+        if not value.startswith("/") or value.startswith("//"):
+            raise ValueError("Reranker endpoint must be an absolute path")
+        return value
+
+
 class KnowledgeConfig(BaseModel):
     embedding_model: str = "local-hashing-v1"
     embedding_dimension: int = Field(default=384, ge=64, le=4096)
     index_backend: Literal["faiss"] = "faiss"
     storage_path: Path = Path("data/knowledge")
     context_max_chars: int = Field(default=6000, ge=1000)
+    embedding_cache_enabled: bool = True
+    embedding_cache_path: Path | None = None
+    embedding_cache_max_entries: int = Field(default=100_000, ge=1000)
     unlimited_ocr: UnlimitedOCRConfig = Field(default_factory=UnlimitedOCRConfig)
+    reranker: RerankerConfig = Field(default_factory=RerankerConfig)
 
 
 class SecurityConfig(BaseModel):

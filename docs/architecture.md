@@ -48,6 +48,7 @@ Trace 写入 PostgreSQL，Redis 只保存队列及短期任务结果，FAISS 保
 | Migration | Alembic | PostgreSQL Schema 版本管理 |
 | AI gateway | OpenAI-compatible / Rule | 结构化诊断和离线降级 |
 | Document OCR | Unlimited-OCR（独立 GPU 服务） | PDF 多页视觉解析，不进入 API/Worker 镜像 |
+| Reranker | 本地 SentenceTransformers 或兼容 HTTP 服务 | 候选知识精排，异常时回退 Hybrid |
 
 Docker Compose 定义 `api`、`worker`、`migrate`、`postgres` 和 `redis` 五个服务。
 
@@ -71,6 +72,8 @@ Docker Compose 定义 `api`、`worker`、`migrate`、`postgres` 和 `redis` 五�
 
 业务编排只依赖统一 `CIProvider`，不直接消费 GitLab/Jenkins/GitHub 原始响应。Provider 负责状态、
 Run、Job、Log、Change 和 Webhook 的统一映射，并通过 Capability 声明可用读能力。
+GitLab Pipeline 处于 pending 时，Provider 会对排队作业标签和项目在线 Runner 做兼容性
+匹配；仅在确认没有兼容 Runner 时生成 `runner_unavailable` 诊断，正常排队不视为失败。
 
 ### 诊断边界
 
@@ -88,11 +91,19 @@ HTML 和 DOCX 在 API 进程中执行受限原生文本提取；HTML 不请求�
 Unlimited-OCR 服务。解析后的文本统一经过 Secret Mask、Chunk、PostgreSQL 和 FAISS
 链路；模型权重、CUDA 和 `trust_remote_code` 不进入平台主镜像。
 
+Reranker 默认关闭。`local` 后端通过可选 `reranker` 依赖使用
+`sentence_transformers.CrossEncoder`，在线程中推理并在每个 Worker 进程内懒加载、缓存
+模型；`http` 后端把 query 与候选正文发送给独立 Cross-Encoder/BGE 兼容 `/rerank`
+服务。两种后端都验证分数和候选映射，重排前分数保留为 `hybrid_score`，任何加载、推理、
+网络或响应异常均安全降级为原 Hybrid 排序。默认运行依赖和镜像不包含本地模型运行时。
+
 ### 安全边界
 
 - 生产 API Key 绑定租户，管理连接只允许管理员 Key。
 - GitLab/Jenkins Webhook 必须验证共享 Secret；GitHub Webhook 必须验证
   `X-Hub-Signature-256` HMAC-SHA256。
+- 每次 Webhook HTTP 投递先写入 `webhook_deliveries`；成功、重复、验签失败和解析失败
+  均保留状态、Payload Hash 与错误码。审计表不保存原始 Body 或认证 Header。
 - 默认 Tool 全部只读；写操作不属于 0.6.1 自动执行范围。
 - 容器使用非 root 用户。
 - PostgreSQL 的本地调试端口只绑定 `127.0.0.1`，生产密码不允许使用 Compose 默认值。
@@ -102,16 +113,20 @@ Unlimited-OCR 服务。解析后的文本统一经过 Secret Mask、Chunk、Post
 ```text
 tenants
 ├── ci_connections
+│   ├── webhook_deliveries
 │   ├── projects
 │   └── ci_events
 ├── diagnoses
-│   └── analysis_traces
+│   ├── analysis_traces
+│   └── diagnosis_feedback
 └── knowledge_documents
     ├── knowledge_chunks
     └── ingestion_jobs
 ```
 
 `evaluation_runs` 独立保存评测版本和指标。数据库变更只能通过新增 Alembic revision 完成。
+Embedding 结果缓存在本地 SQLite 中，仅保存模型参数、文本 SHA-256 和向量，不保存原文；
+缓存故障自动退回直接计算，不影响 PostgreSQL 业务真源或 FAISS 索引格式。
 
 ## 兼容层
 

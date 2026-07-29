@@ -29,6 +29,59 @@ CI_ASSISTANT__KNOWLEDGE__UNLIMITED_OCR__MODEL=Unlimited-OCR
 允许 API 到推理服务，推理服务不应访问 PostgreSQL、Redis 或公网。HTML/DOCX 原生解析不
 依赖 OCR 服务；OCR 未启用时 PDF 上传返回 `SERVICE_UNAVAILABLE`。
 
+## Cross-Encoder/BGE Reranker
+
+Reranker 默认关闭，支持本地 SentenceTransformers 和独立 HTTP 服务两种后端。
+
+本地后端先安装可选依赖：
+
+```bash
+pip install -e ".[reranker]"
+```
+
+再配置：
+
+```text
+CI_ASSISTANT__KNOWLEDGE__RERANKER__BACKEND=local
+CI_ASSISTANT__KNOWLEDGE__RERANKER__MODEL=BAAI/bge-reranker-v2-m3
+CI_ASSISTANT__KNOWLEDGE__RERANKER__DEVICE=cpu
+CI_ASSISTANT__KNOWLEDGE__RERANKER__BATCH_SIZE=16
+CI_ASSISTANT__KNOWLEDGE__RERANKER__MAX_LENGTH=512
+```
+
+模型在每个 Worker 进程内懒加载并缓存。Celery prefork 会让不同进程分别持有一份模型，
+应根据内存或显存容量调整 Worker 并发。生产环境建议预下载固定 revision，并设置
+`LOCAL_FILES_ONLY=true`。
+
+HTTP 后端不需要在平台安装模型依赖，配置如下：
+
+```text
+CI_ASSISTANT__KNOWLEDGE__RERANKER__BACKEND=http
+CI_ASSISTANT__KNOWLEDGE__RERANKER__BASE_URL=http://reranker:8080
+CI_ASSISTANT__KNOWLEDGE__RERANKER__ENDPOINT=/rerank
+CI_ASSISTANT__KNOWLEDGE__RERANKER__MODEL=BAAI/bge-reranker-v2-m3
+CI_ASSISTANT__KNOWLEDGE__RERANKER__TIMEOUT_SECONDS=15
+CI_ASSISTANT__KNOWLEDGE__RERANKER__CANDIDATE_MULTIPLIER=4
+```
+
+请求契约包含 `model`、`query`、`documents` 和 `top_n`；响应兼容
+`results[index,relevance_score]` 或 `data[index,score]`。服务不可用、超时或响应非法时，
+Worker 自动使用原 Hybrid 排序继续诊断。本地模型加载/推理失败也使用相同降级路径。
+两种后端升级前后都应运行同一离线 RAG 评测集。
+
+## Embedding cache
+
+Embedding cache 默认启用，默认文件为知识存储目录下
+`embedding-cache/embeddings.sqlite3`。缓存仅保存模型、维度、归一化参数、文本 SHA-256
+与 float32 向量，不保存知识原文；超出 `embedding_cache_max_entries` 后按最近访问时间
+回收。缓存不可用或损坏时 Worker 会告警并直接计算，不影响索引任务。
+
+每个 Worker 实例使用本地 SQLite；多主机不会共享缓存。模型、维度或归一化配置变化会自然
+产生不同 cache key。容量调整使用
+`CI_ASSISTANT__KNOWLEDGE__EMBEDDING_CACHE_MAX_ENTRIES`，紧急禁用使用
+`CI_ASSISTANT__KNOWLEDGE__EMBEDDING_CACHE_ENABLED=false`。清理缓存前应停掉相关 Worker；
+缓存可重建，不属于业务备份。
+
 ## 升级
 
 1. 备份 PostgreSQL、知识卷和当前镜像版本。
@@ -75,5 +128,7 @@ docker-compose exec -T postgres \
 - Worker 无任务：确认 `diagnosis`、`knowledge` 队列和 Redis broker 一致。
 - 文档未激活：检查 `ingestion_jobs.error` 和知识卷写权限。
 - PDF 解析失败：检查 Unlimited-OCR 地址、GPU 服务状态、页数/像素限制和请求超时。
+- Reranker 未生效：检查 enabled、服务地址、模型名和 Worker 日志中的安全降级提示。
+- Embedding cache 异常：检查知识卷写权限和磁盘容量；可禁用缓存后继续直接计算。
 - Provider 失败：调用连接测试 API，检查最小只读 Token 权限。
 - 模型不可用：诊断会输出低置信度 fallback，并在 Trace 记录 `fallback_used`。

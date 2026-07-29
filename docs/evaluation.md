@@ -81,6 +81,26 @@ pytest -q \
 评测样例不能作为知识答案直接导入同一索引，否则会造成数据泄漏。新增知识数据集时，应保留
 来源 URL、许可证状态、内容 hash 和数据集版本。
 
+## 离线排序评测
+
+主平台排序样例位于 `ci_assistant/ranking_evaluation_cases.json`。运行：
+
+```bash
+make eval-ranking
+```
+
+输出 Hybrid 与 Reranker 的 Recall@1、Recall@3、MRR、Metadata hit rate 和
+Reference precision，并给出指标增量。该命令使用固定离线结果，不加载真实模型，也不访问
+外部服务；用于保护排序指标计算和报告契约，不能替代固定模型、真实知识集上的质量与性能
+验收。评测集与生产反馈数据必须版本化、脱敏并避免训练/评测泄漏。
+
+## 用户反馈闭环
+
+诊断反馈通过 `POST /api/v1/diagnoses/{diagnosis_id}/feedback` 按诊断唯一键幂等更新，
+支持 helpful、partially_helpful、not_helpful 三档评分、建议采纳状态、纠正后的错误类型和
+脱敏评论。单条反馈可按诊断查询；`GET /api/v1/feedback/summary` 提供租户级聚合，供后续
+构建匿名离线评测集。反馈不会自动触发模型训练、CI 写操作或知识入库。
+
 ## 兼容评测
 
 `make eval` 和 `make eval-rag` 当前仍调用 `ci_analysis_demo` 的旧评测脚本，只用于兼容回归，

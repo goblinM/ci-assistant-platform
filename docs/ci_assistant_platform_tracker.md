@@ -1,8 +1,8 @@
 # CI 智能诊断平台开发跟进
 
-> 最后更新：2026-07-28
-> 当前阶段：M7 多格式知识解析完成
-> 目标版本：`0.6.1`
+> 最后更新：2026-07-29
+> 当前阶段：0.6.2 Reranker 完成
+> 目标版本：`0.6.2`
 
 ## 1. 状态说明
 
@@ -29,11 +29,12 @@
 | FastAPI 平台服务 | 已完成 | `ci_assistant/main.py` 与 `/api/v1` |
 | 统一日志/Run 诊断 | 已完成 | `/api/v1/diagnoses/logs`、`/runs` |
 | 结构化诊断 | 已完成 | OpenAI-compatible/规则网关、Pydantic 校验和 fallback |
-| GitLab Provider | 已完成 | Run、Job、Trace、Change、Webhook 与 Capability |
+| GitLab Provider | 已完成 | Run、Job、Trace、Change、Webhook、无匹配 Runner 识别与 Capability |
 | Jenkins Provider | 已完成 | 普通/嵌套 Job、Build、Console、Changeset 与 Webhook |
 | GitHub Actions Provider | 已完成 | Workflow Run、Job、日志、Head Commit、Webhook 与统一契约 |
 | 只读 Tool 策略 | 已完成 | Capability、参数模型、项目允许列表和调用上限 |
 | PostgreSQL/Alembic | 已完成 | 核心、知识和评测实体持久化 |
+| Webhook 投递审计 | 已完成 | 成功、重复、验签/解析失败均脱敏落表，不保存原始 Body |
 | Redis/Celery | 已完成 | diagnosis/knowledge 隔离队列、重试和 late ack |
 | 知识平台 | 已完成 | Markdown/JSON、Chunk、去重、版本和逻辑删除 |
 | 混合检索 | 已完成 | Semantic、Keyword、Metadata 与 ACL |
@@ -165,19 +166,38 @@
 | M7-04 | PDF 安全渲染 | 已完成 | M7-01 | 文件、页数、DPI 和总像素限制 |
 | M7-05 | Unlimited-OCR Client | 已完成 | M7-04 | 独立 OpenAI-compatible GPU 服务和稳定错误边界 |
 
-## 12. 后置事项
+## 12. M8 Cross-Encoder/BGE Reranker
+
+| ID | 事项 | 状态 | 依赖 | 完成标准 |
+| --- | --- | --- | --- | --- |
+| M8-01 | Reranker 配置 | 已完成 | M4 | disabled/local/http、嵌套变量和参数校验 |
+| M8-02 | 本地 CrossEncoder | 已完成 | M8-01 | 可选依赖、线程推理和 Worker 进程内模型缓存 |
+| M8-03 | HTTP Reranker Client | 已完成 | M8-01 | BGE/Jina 常见响应契约、索引与分数校验 |
+| M8-04 | Worker 检索接线 | 已完成 | M8-02、M8-03 | 扩大 Hybrid 候选后精排并保留原分数 |
+| M8-05 | 安全降级 | 已完成 | M8-04 | 加载、推理、网络和非法响应回退 Hybrid |
+| M8-06 | 安全与运维文档 | 已完成 | M8-01 | 依赖隔离、版本固定、容量和网络边界 |
+
+### M9：质量反馈与计算缓存
+
+| 编号 | 任务 | 状态 | 依赖 | 验收 |
+| --- | --- | --- | --- | --- |
+| M9-01 | 离线排序评测 | 已完成 | M8 | 固定样例输出 Hybrid/Reranker 指标及增量 |
+| M9-02 | 诊断反馈闭环 | 已完成 | M1 | 租户隔离、幂等写入、查询和聚合 |
+| M9-03 | Embedding cache | 已完成 | M4 | 不保存原文、批量命中、容量回收和故障降级 |
+
+## 13. 后置事项
 
 | 事项 | 状态 | 目标版本 |
 | --- | --- | --- |
 | GitHub Actions Provider | 已完成 | `0.6.0` |
 | PDF/DOCX/HTML 入库 | 已完成 | `0.6.1` |
-| 模型 Reranker | 后置 | `0.6.x` |
+| 模型 Reranker | 已完成 | `0.6.2` |
 | Web 管理页面 | 后置 | `0.6.x` |
 | 自动评论 CI 结果 | 后置 | `0.7.x` |
 | 人工审批后重跑 | 后置 | `1.0` 前 |
 | Helm 和高可用部署 | 后置 | `1.0` 前 |
 
-## 13. 变更记录
+## 14. 变更记录
 
 | 日期 | 变更 | 结果 |
 | --- | --- | --- |
@@ -193,11 +213,16 @@
 | 2026-07-25 | 完成 M5 容器验收 | 58 项测试、18 Case 固定评测、五服务 Compose、性能/安全/非 root/持久卷验证通过 |
 | 2026-07-28 | 完成 M6 GitHub Actions Provider | Run、Job、日志、Head Commit、HMAC Webhook 和三 Provider 契约测试通过 |
 | 2026-07-28 | 完成 M7 多格式知识解析 | HTML/DOCX 原生提取、PDF 安全渲染和 Unlimited-OCR Client 接入 |
+| 2026-07-28 | 完成本地 GitLab Webhook 闭环 | Pipeline webhook、幂等落库及无匹配 Runner 的 pending 作业诊断 |
+| 2026-07-28 | 完成 Webhook 投递审计 | 新增 `webhook_deliveries` 和追加式迁移，覆盖全部 HTTP 投递结果 |
+| 2026-07-29 | 完成 0.6.2 Reranker | 本地/HTTP Cross-Encoder 精排与 Hybrid 安全降级 |
+| 2026-07-29 | 完成 M9 质量反馈与缓存 | 离线排序评测、诊断反馈闭环和 embedding cache |
 
-## 14. 下一步
+## 15. 下一步
 
-M0–M7 架构迁移、GitHub Actions 和多格式文档解析已完成。后续继续 `0.6.x`
-Reranker 增强路线；旧
+M0–M9 架构迁移、GitHub Actions、多格式文档解析、0.6.2 Reranker、离线排序评测、
+反馈闭环和 embedding cache 已完成。后续使用固定真实模型与脱敏知识集建立质量和性能
+基线；旧
 `ci_analysis_demo` 仅作为兼容包保留，新服务入口和默认运行链路均为 `ci_assistant`。
 
 相关文档：

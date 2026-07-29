@@ -41,6 +41,9 @@ redis:
 knowledge:
   embedding_model: local-hashing-v1
   embedding_dimension: 384
+  embedding_cache_enabled: true
+  embedding_cache_path:
+  embedding_cache_max_entries: 100000
   index_backend: faiss
   storage_path: data/knowledge
   context_max_chars: 6000
@@ -54,3 +57,15 @@ knowledge:
     max_pdf_pages: 40
     max_total_pixels: 100000000
     pdf_dpi: 150
+  reranker:
+    backend: disabled
+    base_url: http://reranker:8080
+    endpoint: /rerank
+    model: BAAI/bge-reranker-v2-m3
+    timeout_seconds: 15
+    candidate_multiplier: 4
+    device: cpu
+    batch_size: 16
+    max_length: 512
+    revision:
+    local_files_only: false

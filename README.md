@@ -25,9 +25,12 @@ Redis/Celery、版本化 FAISS 知识索引以及 OpenAI-compatible 或本地规
 ## 功能能力
 
 - `/api/v1/diagnoses/logs` 与 `/runs` 统一诊断入口
-- GitLab/Jenkins/GitHub Actions Provider、连接测试、只读工具和已验证 Webhook
+- GitLab/Jenkins/GitHub Actions Provider、连接测试、只读工具、已验证 Webhook
+  和全投递脱敏审计
 - PostgreSQL 业务持久化、Redis/Celery 异步任务与 Alembic 迁移
 - Markdown/JSON/HTML/DOCX/PDF 知识上传、Unlimited-OCR PDF 解析、版本化 FAISS 原子发布
+- 可配置 Cross-Encoder/BGE Reranker，异常时自动降级到 Hybrid 排序
+- Hybrid/Reranker 离线排序评测、诊断反馈闭环和本地 embedding cache
 - tenant/project/provider ACL 混合检索与真实 references
 - Bearer API Key 租户隔离、Secret Mask、结构化校验、降级和 Prometheus 指标
 - 18 Case GitLab/Jenkins 固定评测集及 Docker Compose 五服务部署
@@ -45,7 +48,8 @@ flowchart TD
     G --> H["Tenant-scoped Hybrid Retrieval"]
     H --> I["Versioned FAISS Index"]
     E --> J["Read-only Provider Tools"]
-    H --> K["Diagnosis Orchestrator"]
+    H --> S["Optional Cross-Encoder / BGE Reranker"]
+    S --> K["Diagnosis Orchestrator"]
     J --> K
     K --> L["OpenAI-compatible / Rule Gateway"]
     L --> M["Validated Diagnosis + References"]
@@ -125,6 +129,17 @@ export CI_ASSISTANT_SECRET_DIR=secrets
 普通环境变量（如 `LLM_API_URL`）和嵌套变量（如
 `CI_ASSISTANT__KNOWLEDGE__CONTEXT_MAX_CHARS`）均受支持。Secret 文件名使用对应环境变量名，
 文件内容为值，例如 `secrets/LLM_API_KEY`。`config.yml` 和 `secrets/` 默认不会提交到 Git。
+
+Reranker 默认关闭。本地 SentenceTransformers 后端使用：
+
+```bash
+pip install -e ".[dev,reranker]"
+export CI_ASSISTANT__KNOWLEDGE__RERANKER__BACKEND=local
+```
+
+生产环境也可设置 `BACKEND=http` 使用独立 BGE 兼容 `/rerank` 服务。两种后端异常时均
+自动回退 Hybrid 排序，详细配置和容量边界见
+[运维说明](docs/platform_operations.md#cross-encoderbge-reranker)。
 
 平台数据层使用 SQLAlchemy 2.x 异步接口和 `asyncpg`。`Database` 负责 Engine 生命周期和
 事务级 Session：上下文正常退出时提交，发生异常时回滚，Repository 本身不擅自提交事务。
@@ -211,6 +226,7 @@ curl -X POST "http://127.0.0.1:8080/ci/analyze-log" \
 ```bash
 make eval
 make eval-rag
+make eval-ranking
 ```
 
 核心指标：
@@ -220,9 +236,13 @@ make eval-rag
 - Top-k reference hit rate：RAG 引用是否命中期望知识文档
 - Avg keyword score：原因和建议是否覆盖关键排查词
 
+`make eval-ranking` 是主平台固定离线排序基线，不需要启动服务或加载真实模型。诊断完成后
+可通过 `POST /api/v1/diagnoses/{diagnosis_id}/feedback` 提交评分和建议采纳状态，并通过
+同路径 GET 或 `/api/v1/feedback/summary` 查询。
+
 ## 产品边界
 
-0.6.1 默认只分析和建议，不自动修改代码或重跑 Pipeline。部署方仍需提供最小权限
+0.6.2 默认只分析和建议，不自动修改代码或重跑 Pipeline。部署方仍需提供最小权限
 CI Token、TLS、网络出口策略、备份、镜像扫描和 API Key 轮换。Web 管理页、自动评论和
 人工审批后的写操作属于后续版本。
 
@@ -254,6 +274,6 @@ CI Token、TLS、网络出口策略、备份、镜像扫描和 API Key 轮换。
 ## 后续路线
 
 - 增加用户反馈入口，沉淀 accepted/rejected/helpful 标签。
-- 引入 reranker 和 embedding cache，提高 RAG 命中率和性能。
-- 引入可配置且可降级的 Cross-Encoder/BGE Reranker。
+- 增加离线 RAG 排序评测，量化 Reranker 对 Recall@k 和 MRR 的改善。
+- 引入 embedding cache，提高重复诊断的检索性能。
 - 在人工审批边界内增加评论、Issue 和 Pipeline 重跑动作。

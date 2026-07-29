@@ -119,16 +119,61 @@ class GitLabProvider:
         project = payload.get("project") or {}
         obj = payload.get("object_attributes") or {}
         build_id = payload.get("build_id")
+        project_ref = str(
+            project.get("path_with_namespace") or project.get("id") or ""
+        )
+        run_id = str(obj.get("id")) if obj.get("id") is not None else None
+        status = normalize_status(obj.get("status") or payload.get("build_status"))
+        diagnostic_reason = None
+        if (
+            payload.get("object_kind") == "pipeline"
+            and status == RunStatus.QUEUED
+            and project_ref
+            and run_id
+            and await self._has_unmatched_pending_job(project_ref, run_id)
+        ):
+            diagnostic_reason = "runner_unavailable"
         external_id = str(obj.get("id") or build_id or "")
         return CIEvent(
             provider="gitlab",
             external_event_id=external_id,
             event_type=str(payload.get("object_kind") or "unknown"),
-            project_ref=str(project.get("path_with_namespace") or project.get("id") or ""),
-            run_id=str(obj.get("id")) if obj.get("id") is not None else None,
+            project_ref=project_ref,
+            run_id=run_id,
             job_id=str(build_id) if build_id is not None else None,
-            status=normalize_status(obj.get("status") or payload.get("build_status")),
+            status=status,
+            diagnostic_reason=diagnostic_reason,
         )
+
+    async def _has_unmatched_pending_job(
+        self, project_ref: str, run_id: str
+    ) -> bool:
+        """判断排队作业是否缺少满足标签约束的在线 Runner。"""
+        jobs = await self.client.list_pipeline_jobs(project_ref, run_id)
+        pending_jobs = [
+            item for item in jobs if normalize_status(item.get("status")) == RunStatus.QUEUED
+        ]
+        if not pending_jobs:
+            return False
+        runners = [
+            item
+            for item in await self.client.list_project_runners(project_ref)
+            if not item.get("paused")
+        ]
+        for job in pending_jobs:
+            required_tags = set(job.get("tag_list") or [])
+            if any(self._runner_matches(item, required_tags) for item in runners):
+                continue
+            return True
+        return False
+
+    @staticmethod
+    def _runner_matches(runner: dict[str, Any], required_tags: set[str]) -> bool:
+        """判断在线 Runner 是否满足作业标签与无标签运行约束。"""
+        runner_tags = set(runner.get("tag_list") or [])
+        if required_tags:
+            return required_tags.issubset(runner_tags)
+        return bool(runner.get("run_untagged"))
 
     @staticmethod
     def _map_job(payload: dict[str, Any], run_id: str) -> JobRun:
@@ -144,4 +189,3 @@ class GitLabProvider:
             agent_name=runner.get("description"),
             web_url=payload.get("web_url"),
         )
-

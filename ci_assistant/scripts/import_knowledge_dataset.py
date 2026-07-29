@@ -10,7 +10,7 @@ from uuid import UUID
 from sqlalchemy import select
 
 from ci_assistant.core.config import load_settings
-from ci_assistant.knowledge.embeddings import HashingEmbedder
+from ci_assistant.knowledge.embeddings import build_embedder
 from ci_assistant.knowledge.indexing import KnowledgeIndexer
 from ci_assistant.persistence.database import Database
 from ci_assistant.persistence.entities import IngestionJob
@@ -77,7 +77,7 @@ async def import_dataset(path: Path, tenant_id: UUID) -> dict[str, Any]:
                 else:
                     created += 1
 
-            embedder = HashingEmbedder(settings.knowledge.embedding_dimension)
+            embedder = build_embedder(settings.knowledge)
             indexer = KnowledgeIndexer(
                 settings.knowledge.storage_path,
                 lambda texts: embedder.encode(texts, normalize_embeddings=True),

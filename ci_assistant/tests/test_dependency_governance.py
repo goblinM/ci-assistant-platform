@@ -32,3 +32,19 @@ def test_runtime_requirement_files_follow_pyproject_dependencies() -> None:
 
     assert _requirement_names(ROOT / "requirements-runtime.txt") == expected
     assert _requirement_names(ROOT / "requirements.txt") == expected
+
+
+def test_sentence_transformers_is_only_an_optional_reranker_dependency() -> None:
+    """验证本地 CrossEncoder 不进入默认或容器运行依赖。"""
+    text = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    reranker = re.search(r"(?ms)^reranker = (\[.*?^\])", text)
+
+    assert "sentence-transformers" not in _project_dependency_names()
+    assert "sentence-transformers" not in _requirement_names(
+        ROOT / "requirements-runtime.txt"
+    )
+    assert reranker is not None
+    assert any(
+        value.startswith("sentence-transformers")
+        for value in ast.literal_eval(reranker.group(1))
+    )

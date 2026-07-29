@@ -1,0 +1,45 @@
+[
+  {
+    "id": "dependency-gitlab",
+    "expected_ids": ["dependency-python"],
+    "expected_metadata": {"provider": "gitlab"},
+    "hybrid": [
+      {"id": "generic-build", "metadata": {"provider": "gitlab"}},
+      {"id": "dependency-python", "metadata": {"provider": "gitlab"}},
+      {"id": "jenkins-agent", "metadata": {"provider": "jenkins"}}
+    ],
+    "reranked": [
+      {"id": "dependency-python", "metadata": {"provider": "gitlab"}},
+      {"id": "generic-build", "metadata": {"provider": "gitlab"}},
+      {"id": "jenkins-agent", "metadata": {"provider": "jenkins"}}
+    ]
+  },
+  {
+    "id": "runner-jenkins",
+    "expected_ids": ["jenkins-agent"],
+    "expected_metadata": {"provider": "jenkins"},
+    "hybrid": [
+      {"id": "generic-build", "metadata": {"provider": "gitlab"}},
+      {"id": "dependency-python", "metadata": {"provider": "gitlab"}},
+      {"id": "jenkins-agent", "metadata": {"provider": "jenkins"}}
+    ],
+    "reranked": [
+      {"id": "jenkins-agent", "metadata": {"provider": "jenkins"}},
+      {"id": "generic-build", "metadata": {"provider": "gitlab"}},
+      {"id": "dependency-python", "metadata": {"provider": "gitlab"}}
+    ]
+  },
+  {
+    "id": "docker-shared",
+    "expected_ids": ["generic-build"],
+    "expected_metadata": {},
+    "hybrid": [
+      {"id": "generic-build", "metadata": {}},
+      {"id": "dependency-python", "metadata": {"provider": "gitlab"}}
+    ],
+    "reranked": [
+      {"id": "generic-build", "metadata": {}},
+      {"id": "dependency-python", "metadata": {"provider": "gitlab"}}
+    ]
+  }
+]

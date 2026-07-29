@@ -18,6 +18,8 @@ class WebhookOutcome:
     event_id: UUID | None
     diagnosis_id: UUID | None
     duplicate: bool
+    event_type: str
+    external_event_id: str
 
 
 class WebhookService:
@@ -29,9 +31,11 @@ class WebhookService:
         connection: CIConnection,
         headers: dict[str, str],
         body: bytes,
+        verify_signature: bool = True,
     ) -> WebhookOutcome:
         """处理 ``handle`` 对应的请求或事件。"""
-        await provider.verify_webhook(headers, body)
+        if verify_signature:
+            await provider.verify_webhook(headers, body)
         payload = json.loads(body)
         event = await provider.parse_webhook(payload)
         event_id, created = await CIEventRepository(session).create_once(
@@ -43,10 +47,22 @@ class WebhookService:
             payload=payload,
         )
         if not created:
-            return WebhookOutcome(None, None, True)
+            return WebhookOutcome(
+                None,
+                None,
+                True,
+                event.event_type,
+                event.external_event_id,
+            )
 
         diagnosis_id = None
-        if event.status == RunStatus.FAILED:
+        if event.status == RunStatus.FAILED or event.diagnostic_reason:
+            diagnostic_log = ""
+            if event.diagnostic_reason == "runner_unavailable":
+                diagnostic_log = (
+                    "runner unavailable: no online GitLab runner matches "
+                    "the pending job tags"
+                )
             diagnosis = Diagnosis(
                 tenant_id=connection.tenant_id,
                 project_id=None,
@@ -58,10 +74,19 @@ class WebhookService:
                     "project_ref": event.project_ref,
                     "run_id": event.run_id,
                     "job_id": event.job_id,
+                    "log": diagnostic_log,
+                    "diagnostic_reason": event.diagnostic_reason,
+                    "use_rag": event.diagnostic_reason is None,
+                    "use_tools": event.diagnostic_reason is None,
                 },
                 error_code=None,
             )
             await DiagnosisRepository(session).add(diagnosis)
             diagnosis_id = diagnosis.id
-        return WebhookOutcome(event_id, diagnosis_id, False)
-
+        return WebhookOutcome(
+            event_id,
+            diagnosis_id,
+            False,
+            event.event_type,
+            event.external_event_id,
+        )

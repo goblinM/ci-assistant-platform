@@ -265,6 +265,7 @@ MVP 完成必须同时满足：
 
 ## 10. 相关文档
 
-- [产品化可行性分析](ci_assistant_platform_analysis.md)
-- [开发文档](ci_assistant_platform_development.md)
-- [开发跟进](ci_assistant_platform_tracker.md)
+- [当前架构](architecture.md)
+- [工程决策](DECISIONS.md)
+- [当前待办](TODO.md)
+- [MVP 验收记录](mvp_acceptance_report.md)

@@ -1,7 +1,7 @@
 # 开发入口
 
-本文件是 ADOS 开发索引，详细设计保留在
-`ci_assistant_platform_development.md`，测试分层见 `evaluation.md`。
+本文件是 ADOS 开发索引。当前组件与边界见 `architecture.md`，已接受的设计取舍见
+`DECISIONS.md`，测试分层见 `evaluation.md`。
 
 ## 环境
 

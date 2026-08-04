@@ -180,6 +180,6 @@ Provider 或触发 CI 写操作。
 6. 行为、配置、命令或架构变化同步更新现有文档。
 7. 运行专项测试、完整回归、源码编译和 `git diff --check`，如实记录未执行项。
 
-当前优先级见 `docs/TODO.md` 和 `docs/ci_assistant_platform_tracker.md`；架构决策见
-`docs/DECISIONS.md`；排障记录入口见 `docs/DEBUG.md`；版本变化见
+当前优先级只在 `docs/TODO.md` 维护；架构决策见 `docs/DECISIONS.md`；排障记录入口见
+`docs/DEBUG.md`；版本变化见
 `docs/CHANGELOG.md`。

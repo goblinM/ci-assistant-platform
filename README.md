@@ -246,18 +246,19 @@ make eval-ranking
 CI Token、TLS、网络出口策略、备份、镜像扫描和 API Key 轮换。Web 管理页、自动评论和
 人工审批后的写操作属于后续版本。
 
-完整设计见 [产品化设计](docs/productization_design.md)。
-
 ## 工程化材料
 
-- [CI 智能诊断平台产品化分析](docs/ci_assistant_platform_analysis.md)
-- [CI 智能诊断平台 MVP](docs/ci_assistant_platform_mvp.md)
-- [CI 智能诊断平台开发文档](docs/ci_assistant_platform_development.md)
-- [CI 智能诊断平台开发跟进](docs/ci_assistant_platform_tracker.md)
-- [产品化设计](docs/productization_design.md)
+- [快速接手](docs/PROJECT_ONBOARDING.md)
 - [架构说明](docs/architecture.md)
+- [开发与验证](docs/DEVELOPMENT.md)
+- [当前待办](docs/TODO.md)
+- [工程决策](docs/DECISIONS.md)
+- [安装与运维](docs/platform_operations.md)
 - [API 示例](docs/api_examples.md)
 - [评测说明](docs/evaluation.md)
+- [MVP 范围基线](docs/ci_assistant_platform_mvp.md)
+- [MVP 验收记录](docs/mvp_acceptance_report.md)
+- [安全验证](docs/security_verification.md)
 - [RAG 和 Tool Calling 区别](docs/rag_vs_tool_calling.md)
 - [Tool 调用优化全过程](docs/tool_calling_optimization.md)
 - [今日面试速查](docs/interview_today_guide.md)
@@ -273,7 +274,4 @@ CI Token、TLS、网络出口策略、备份、镜像扫描和 API Key 轮换。
 
 ## 后续路线
 
-- 增加用户反馈入口，沉淀 accepted/rejected/helpful 标签。
-- 增加离线 RAG 排序评测，量化 Reranker 对 Recall@k 和 MRR 的改善。
-- 引入 embedding cache，提高重复诊断的检索性能。
-- 在人工审批边界内增加评论、Issue 和 Pipeline 重跑动作。
+当前优先级和后续路线统一维护在 [治理与产品待办](docs/TODO.md)，README 不重复维护任务状态。

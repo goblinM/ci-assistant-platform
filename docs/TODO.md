@@ -1,7 +1,7 @@
 # 治理与产品待办
 
-本文件只维护当前优先级入口；完整产品里程碑保留在
-`ci_assistant_platform_tracker.md`。
+本文件是当前优先级和后续事项的唯一维护入口。已完成变化记录在 `CHANGELOG.md`，历史
+MVP 验收证据保留在 `mvp_acceptance_report.md`。
 
 ## 当前
 

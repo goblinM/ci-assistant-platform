@@ -1,6 +1,6 @@
 # CI Assistant Platform 架构
 
-本文描述 `ci_assistant` 0.6.1 的实际运行架构。旧包 `ci_analysis_demo` 只承担兼容职责，
+本文描述 `ci_assistant` 0.6.2 的实际运行架构。旧包 `ci_analysis_demo` 只承担兼容职责，
 不再作为新功能的目标架构。
 
 ## 系统数据流
@@ -104,7 +104,7 @@ Reranker 默认关闭。`local` 后端通过可选 `reranker` 依赖使用
   `X-Hub-Signature-256` HMAC-SHA256。
 - 每次 Webhook HTTP 投递先写入 `webhook_deliveries`；成功、重复、验签失败和解析失败
   均保留状态、Payload Hash 与错误码。审计表不保存原始 Body 或认证 Header。
-- 默认 Tool 全部只读；写操作不属于 0.6.1 自动执行范围。
+- 默认 Tool 全部只读；写操作不属于 0.6.2 自动执行范围。
 - 容器使用非 root 用户。
 - PostgreSQL 的本地调试端口只绑定 `127.0.0.1`，生产密码不允许使用 Compose 默认值。
 

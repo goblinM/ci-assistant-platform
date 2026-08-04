@@ -77,7 +77,7 @@ git diff --check
 - 缺少 `docs/CHANGELOG.md`。
 
 这些文件未包含在本次确认的 P0 清单中，因此没有为迎合验证器额外创建。现有同类事实继续
-由 `docs/ci_assistant_platform_development.md`、`docs/ci_assistant_platform_tracker.md`、
+由 `docs/architecture.md`、`docs/DECISIONS.md`、`docs/TODO.md`、
 `docs/platform_operations.md` 和现有验收材料承载。结论是：已确认 P0 范围实施和专项测试
 通过，但完整 ADOS 文档矩阵验证未通过。
 
@@ -347,3 +347,22 @@ Reranker 或模型服务。
 唯一测试警告为 FastAPI TestClient 对当前 Starlette 适配层的弃用提示。本次离线排序数据为
 确定性契约样例，不能代表真实 BGE 模型质量；后续仍需使用固定模型 revision 和脱敏知识集
 建立质量、延迟及资源基线。
+
+## P0 文档去重
+
+> 执行日期：2026-07-30
+
+### 实施内容
+
+- 将当前架构、开发验证、待办、变更和工程决策继续收敛到现有 ADOS 核心文档。
+- 校准 `architecture.md` 的 0.6.2 版本描述，更新 README、AGENTS、Onboarding 和 MVP
+  文档导航。
+- 删除已被现行文档替代的产品化分析、开发设计、开发跟进和产品化设计四份历史文档。
+- 未新增文档、未移动目录，未修改业务代码、公开 API、依赖、数据库、迁移或 CI/CD。
+
+### 验证结果
+
+- ADOS `validate_adoption.py`：`Passed`，14 项检查通过，无 warning 或 failure。
+- 已删除文件名的 Markdown 残留引用检查：无匹配。
+- `git diff --check`：通过。
+- 未运行项目测试、编译或服务；本次仅修改文档。

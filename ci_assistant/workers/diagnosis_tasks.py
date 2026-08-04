@@ -41,7 +41,12 @@ if app is None:
     max_retries=3,
 )
 def diagnose(self, diagnosis_id: str) -> dict[str, Any]:
-    """执行单条诊断任务，并以安全字段记录失败事件。"""
+    """运行 Celery 诊断任务，并把异步实现桥接到当前 Worker 进程。
+
+    任务仅接收诊断记录 ID，业务输入由异步处理函数从数据库读取。连接或超时异常由 Celery
+    按指数退避策略最多重试三次；所有未处理异常先记录不含日志正文的稳定错误字段，再重新
+    抛出给 Celery 更新任务状态。
+    """
 
     try:
         return asyncio.run(_diagnose(diagnosis_id))
@@ -57,6 +62,13 @@ def diagnose(self, diagnosis_id: str) -> dict[str, Any]:
 
 
 async def _diagnose(diagnosis_id: str) -> dict[str, Any]:
+    """完成单条诊断记录从 ``queued`` 到终态的异步处理。
+
+    查询记录并使已成功任务幂等返回，然后标记为运行中；按上下文选择 Provider、失败 Job
+    和日志，在租户 ACL 内检索知识并执行可降级精排，再调用诊断编排器。成功时持久化结果
+    与追踪，异常时标记失败并抛出，最后释放数据库连接池。
+    """
+
     settings = load_settings()
     database = Database.from_config(settings.database)
     try:

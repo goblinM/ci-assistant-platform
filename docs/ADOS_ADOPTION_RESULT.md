@@ -434,3 +434,19 @@ Reranker 或模型服务。
 - `venv/bin/python -m compileall -q ci_assistant ci_analysis_demo` 和 `git diff --check` 通过；
   `venv/bin/pytest -q` 为 `108 passed, 1 warning in 6.37s`，warning 仍为既有的 Starlette
   TestClient 弃用提示。
+
+### 第六批：诊断 API 语义说明
+
+- 完善 `ci_assistant/api/diagnoses.py` 的内部派发函数及日志诊断、Run 诊断、结果查询接口
+  Docstring，明确租户鉴权、预处理、持久化、Celery 派发和 Worker 后续取数边界。
+- ADOS 静态扫描中该文件无 Docstring warning；移除 Docstring 后 AST 与 `HEAD` 一致。
+- 专项回归 `8 passed, 1 warning`，源码编译和 `git diff --check` 通过；warning 为既有的
+  Starlette TestClient 弃用提示。
+
+### 第七批：诊断 Worker 生命周期
+
+- 完善 `ci_assistant/workers/diagnosis_tasks.py` 的 Celery 任务入口与异步处理 Docstring，明确
+  仅传诊断 ID、数据库取数、自动重试、安全失败日志、幂等返回、Provider 日志获取、租户
+  ACL 检索、结果落库和连接池释放边界。
+- 专项回归 `5 passed`；移除 Docstring 后 AST 与 `HEAD` 一致，源码编译和
+  `git diff --check` 通过。

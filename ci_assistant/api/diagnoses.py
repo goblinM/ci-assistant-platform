@@ -24,6 +24,8 @@ router = APIRouter(prefix="/api/v1/diagnoses", tags=["diagnoses"])
 
 
 def _dispatch(request: Request, diagnosis_id: UUID) -> None:
+    """将诊断 ID 派发给 Celery 诊断任务；未配置派发器时保持无操作。"""
+
     dispatcher = getattr(request.app.state, "task_dispatcher", None)
     if dispatcher is not None:
         dispatcher("ci_assistant.diagnose", str(diagnosis_id))
@@ -35,8 +37,14 @@ async def create_log_diagnosis(
     request: Request,
     session: AsyncSession = Depends(get_session),
 ):
-    """创建 ``create_log_diagnosis`` 对应的领域对象或结果。"""
+    """接收原始 CI 日志并创建异步诊断。
+    校验租户后对日志执行截断、错误片段提取和敏感信息脱敏，再保存 ``queued`` 记录。
+    数据库生成诊断 ID 后，将其派发给 ``ci_assistant.diagnose`` Celery 任务，并返回诊断
+    ID、追踪 ID 和初始状态。
+    """
+    # Tenant 鉴权
     enforce_tenant(request, payload.tenant_id)
+    # diagnoses 写入 queued
     repository = DiagnosisRepository(session)
     diagnosis = Diagnosis(
         tenant_id=payload.tenant_id,
@@ -69,7 +77,11 @@ async def create_run_diagnosis(
     request: Request,
     session: AsyncSession = Depends(get_session),
 ):
-    """创建 ``create_run_diagnosis`` 对应的领域对象或结果。"""
+    """根据已配置的 CI Run 创建异步诊断。
+    查询连接并按其所属租户鉴权，再通过统一 Provider 获取规范化 Run；连接不存在或未配置
+    时返回稳定错误。随后保存 ``queued`` 记录并派发其 ID。
+    Job 与日志由 Celery Worker 按已保存的 Run 上下文获取。
+    """
     connection = await CIConnectionRepository(session).get_by_external_id(
         payload.connection_id
     )
@@ -121,7 +133,11 @@ async def get_diagnosis(
     request: Request,
     session: AsyncSession = Depends(get_session),
 ):
-    """获取 ``get_diagnosis`` 对应的数据。"""
+    """按诊断 ID 查询当前状态和结果，并强制执行记录所属租户隔离。
+
+    诊断不存在时返回稳定的资源不存在错误；存在时将持久化实体转换为 ``DiagnosisView``，
+    与当前请求 ID 一并封装为统一 API Envelope。该接口只查询状态，不会重复派发诊断任务。
+    """
     diagnosis = await DiagnosisRepository(session).get(diagnosis_id)
     if diagnosis is None:
         raise PlatformError(

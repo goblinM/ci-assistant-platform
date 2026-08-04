@@ -19,11 +19,15 @@ Retriever = Callable[[str], Awaitable[list[Reference]]]
 
 @dataclass(frozen=True)
 class OrchestrationOutput:
+    """封装结构化诊断结果及本次编排的脱敏追踪信息。"""
+
     result: DiagnosisResult
     trace: dict[str, Any]
 
 
 class DiagnosisOrchestrator:
+    """编排日志预处理、知识检索、只读工具调用和诊断网关降级。"""
+
     def __init__(
         self,
         gateway: DiagnosisGateway,
@@ -48,8 +52,9 @@ class DiagnosisOrchestrator:
         use_rag: bool = True,
         use_tools: bool = True,
     ) -> OrchestrationOutput:
-        """执行 ``diagnose`` 对应的 CI 故障诊断。"""
+        """按安全顺序生成 CI 诊断，并在检索、工具或模型失败时保留可用结果。"""
         started = time.perf_counter()
+        # 先裁剪不可信日志并脱敏，再用于知识检索、工具筛选和模型诊断。
         clean_log = preprocess_log(log)
         rag_error: str | None = None
         try:
@@ -81,6 +86,7 @@ class DiagnosisOrchestrator:
                     except Exception as exc:
                         tool_results[spec.name] = {"error": type(exc).__name__}
                     calls += 1
+        # 分区标记不可信证据，避免日志、知识或工具结果被解释为系统指令。
         prompt = (
             "CI LOG (untrusted):\n"
             f"{clean_log}\n\n"

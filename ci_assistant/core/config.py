@@ -12,10 +12,12 @@ from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator, m
 
 
 class ConfigurationError(ValueError):
-    """Raised when configuration cannot be loaded safely."""
+    """表示配置文件、Secret 目录或配置结构无法被安全加载。"""
 
 
 class AppConfig(BaseModel):
+    """定义应用环境、监听地址、数据目录和默认租户。"""
+
     environment: Literal["development", "test", "production"] = "development"
     data_dir: Path = Path("data")
     host: str = "0.0.0.0"
@@ -27,6 +29,8 @@ class AppConfig(BaseModel):
 
 
 class AIConfig(BaseModel):
+    """定义诊断模型网关、凭据、超时和有限重试配置。"""
+
     provider: str = "openai_compatible"
     base_url: str = ""
     api_key: SecretStr = SecretStr("")
@@ -36,6 +40,8 @@ class AIConfig(BaseModel):
 
 
 class CIConnectionConfig(BaseModel):
+    """定义单个 CI Provider 连接及其凭据环境变量名称。"""
+
     model_config = ConfigDict(extra="forbid")
 
     id: str = Field(min_length=1)
@@ -48,18 +54,20 @@ class CIConnectionConfig(BaseModel):
     @field_validator("base_url")
     @classmethod
     def validate_base_url(cls, value: str) -> str:
-        """校验 ``validate_base_url`` 对应的约束。"""
+        """仅接受 HTTP(S) Provider 地址，并移除末尾斜杠。"""
         if not value.startswith(("http://", "https://")):
             raise ValueError("base_url must start with http:// or https://")
         return value.rstrip("/")
 
 
 class CIConfig(BaseModel):
+    """保存平台 CI 连接集合并保证连接 ID 唯一。"""
+
     connections: list[CIConnectionConfig] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def connection_ids_are_unique(self) -> CIConfig:
-        """执行 ``connection_ids_are_unique`` 对应的领域操作。"""
+        """拒绝重复连接 ID，避免运行期 Provider 被静默覆盖。"""
         ids = [connection.id for connection in self.connections]
         if len(ids) != len(set(ids)):
             raise ValueError("CI connection ids must be unique")
@@ -67,6 +75,8 @@ class CIConfig(BaseModel):
 
 
 class DatabaseConfig(BaseModel):
+    """定义 PostgreSQL 异步连接及连接池容量边界。"""
+
     url: SecretStr = SecretStr(
         "postgresql+asyncpg://ci_assistant:ci_assistant@localhost:5432/ci_assistant"
     )
@@ -77,6 +87,8 @@ class DatabaseConfig(BaseModel):
 
 
 class RedisConfig(BaseModel):
+    """定义 Celery Broker 和短期结果使用的 Redis 地址。"""
+
     url: SecretStr = SecretStr("redis://localhost:6379/0")
 
 
@@ -121,7 +133,7 @@ class RerankerConfig(BaseModel):
     @field_validator("base_url")
     @classmethod
     def validate_base_url(cls, value: str) -> str:
-        """校验 Reranker 服务 URL。"""
+        """校验 Reranker 服务 URL 必须使用 HTTP(S) 协议。"""
         if not value.startswith(("http://", "https://")):
             raise ValueError("Reranker base_url must start with http:// or https://")
         return value.rstrip("/")
@@ -136,6 +148,8 @@ class RerankerConfig(BaseModel):
 
 
 class KnowledgeConfig(BaseModel):
+    """聚合知识索引、Embedding cache、OCR 和 Reranker 配置。"""
+
     embedding_model: str = "local-hashing-v1"
     embedding_dimension: int = Field(default=384, ge=64, le=4096)
     index_backend: Literal["faiss"] = "faiss"
@@ -149,10 +163,12 @@ class KnowledgeConfig(BaseModel):
 
 
 class SecurityConfig(BaseModel):
+    """保存 API Key 到租户的敏感映射配置。"""
+
     api_keys_json: SecretStr = SecretStr("{}")
 
     def api_keys(self) -> dict[str, str]:
-        """执行 ``api_keys`` 对应的领域操作。"""
+        """解析并校验 API Key 映射；租户值只能是 UUID 或管理员通配符。"""
         try:
             value = json.loads(self.api_keys_json.get_secret_value())
         except json.JSONDecodeError as exc:
@@ -174,6 +190,8 @@ class SecurityConfig(BaseModel):
 
 
 class PlatformSettings(BaseModel):
+    """聚合平台全部配置，并在生产环境执行额外安全校验。"""
+
     model_config = ConfigDict(extra="forbid")
 
     app: AppConfig = Field(default_factory=AppConfig)
@@ -186,7 +204,7 @@ class PlatformSettings(BaseModel):
 
     @model_validator(mode="after")
     def validate_production_settings(self) -> PlatformSettings:
-        """校验 ``validate_production_settings`` 对应的约束。"""
+        """禁止生产热重载，并要求模型配置和至少一个租户 API Key。"""
         if self.app.environment != "production":
             return self
         if self.app.reload:

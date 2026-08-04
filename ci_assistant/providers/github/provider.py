@@ -105,7 +105,7 @@ class GitHubProvider:
         return self._map_job(payload, str(payload.get("run_id") or ""))
 
     async def get_job_log(self, project_ref: str, job_id: str) -> LogArtifact:
-        """获取指定 Job 日志并执行尾部限长。"""
+        """获取指定 GitHub Actions Job 日志，保留尾部并记录是否截断。"""
         content = await self.client.get_job_log(project_ref, job_id)
         return LogArtifact(
             job_id=job_id,

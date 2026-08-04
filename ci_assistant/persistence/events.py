@@ -11,6 +11,8 @@ from .models import utc_now
 
 
 class CIEventRepository:
+    """使用数据库唯一约束幂等写入 CI 事件，避免重复 Webhook 触发诊断。"""
+
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -47,4 +49,3 @@ class CIEventRepository:
         )
         event_id = (await self.session.execute(statement)).scalar_one_or_none()
         return event_id, event_id is not None
-

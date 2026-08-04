@@ -22,6 +22,8 @@ EmbeddingFunction = Callable[[list[str]], np.ndarray]
 
 
 class KnowledgeIndexer:
+    """为单租户重建版本化 FAISS 索引，并维护文档和入库任务状态。"""
+
     def __init__(
         self,
         storage_path: Path,
@@ -34,7 +36,7 @@ class KnowledgeIndexer:
         self.dimension = dimension
 
     async def rebuild_tenant(self, session: AsyncSession, tenant_id: UUID) -> str:
-        """执行 ``rebuild_tenant`` 对应的知识库处理流程。"""
+        """读取租户有效 Chunk、生成向量并原子发布新索引版本；空知识库也发布空版本。"""
         result = await session.execute(
             select(KnowledgeChunk, KnowledgeDocument)
             .join(KnowledgeDocument, KnowledgeChunk.document_id == KnowledgeDocument.id)
@@ -95,7 +97,7 @@ class KnowledgeIndexer:
         *,
         error: str | None = None,
     ) -> None:
-        """执行 ``complete_job`` 对应的领域操作。"""
+        """将入库任务标记为成功或失败，并限制持久化错误信息长度。"""
         job = await session.get(IngestionJob, job_id)
         if job is not None:
             job.status = "failed" if error else "succeeded"

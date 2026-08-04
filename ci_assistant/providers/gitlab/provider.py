@@ -36,6 +36,8 @@ def normalize_status(value: str | None) -> RunStatus:
 
 
 class GitLabProvider:
+    """将 GitLab Pipeline、Job、日志、变更和 Webhook 映射到统一 CI 协议。"""
+
     provider_type = "gitlab"
     capabilities = frozenset(ProviderCapability)
 

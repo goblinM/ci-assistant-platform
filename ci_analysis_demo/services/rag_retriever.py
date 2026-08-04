@@ -36,6 +36,8 @@ except ModuleNotFoundError:
 
 # 本地检索
 class LocalRetriever:
+    """加载旧 JSON 知识集，并通过本地向量、关键词和 Metadata 执行兼容检索。"""
+
     def __init__(self, knowledge_path: str):
         if faiss is None or np is None or SentenceTransformer is None:
             raise RuntimeError(

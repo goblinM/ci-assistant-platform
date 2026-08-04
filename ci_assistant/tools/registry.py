@@ -5,7 +5,7 @@ from .builtins import get_changes, get_job_context, get_job_log, get_run_context
 
 
 def default_tool_specs() -> list[ToolSpec]:
-    """执行 ``default_tool_specs`` 对应的领域操作。"""
+    """构建平台默认只读 Tool 规格及其 Provider 能力和触发条件。"""
     return [
         ToolSpec(
             name="get_run_context",
@@ -40,4 +40,3 @@ def default_tool_specs() -> list[ToolSpec]:
             trigger_keywords=frozenset({"commit", "change", "regression"}),
         ),
     ]
-

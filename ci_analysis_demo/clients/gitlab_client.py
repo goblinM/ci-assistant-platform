@@ -13,10 +13,14 @@ import httpx
 
 
 class GitLabClientError(Exception):
+    """表示兼容层 GitLab HTTP 请求失败并携带受限上游信息。"""
+
     pass
 
 
 class GitLabClient:
+    """封装旧接口所需的 GitLab 只读项目、作业、流水线和提交查询。"""
+
     def __init__(self, base_url: str, private_token: str, timeout: float = 20):
         self.base_url = base_url.rstrip("/")
         self.private_token = private_token

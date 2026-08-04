@@ -16,18 +16,22 @@ from ci_assistant.schemas.knowledge import (
 
 @dataclass(frozen=True)
 class CreatedKnowledge:
+    """返回知识文档、可选入库任务以及内容是否重复。"""
+
     document: KnowledgeDocument
     job: IngestionJob | None
     duplicate: bool
 
 
 class KnowledgeService:
+    """管理租户知识文档的去重、版本替换、切片入库和逻辑删除。"""
+
     async def create(
         self,
         session: AsyncSession,
         payload: CreateKnowledgeDocument | CreateParsedKnowledgeDocument,
     ) -> CreatedKnowledge:
-        """创建 ``create`` 对应的领域对象或结果。"""
+        """规范化并切分文档；内容重复时复用活动版本，否则创建新版及入库任务。"""
         processed = process_document(payload.content, payload.format)
         repository = KnowledgeRepository(session)
         duplicate = await repository.find_active_hash(
@@ -72,7 +76,7 @@ class KnowledgeService:
         document_id: UUID,
         tenant_id: UUID,
     ) -> KnowledgeDocument | None:
-        """删除 ``delete`` 对应的数据。"""
+        """在租户边界内逻辑删除知识文档，越权或不存在时返回空结果。"""
         repository = KnowledgeRepository(session)
         document = await repository.get(document_id)
         if document is None or document.tenant_id != tenant_id:

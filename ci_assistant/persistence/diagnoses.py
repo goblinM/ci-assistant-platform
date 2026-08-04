@@ -11,6 +11,8 @@ from .repositories import Repository
 
 
 class DiagnosisRepository(Repository[Diagnosis]):
+    """提供诊断记录持久化及唯一 Trace ID 查询。"""
+
     def __init__(self, session: AsyncSession) -> None:
         super().__init__(session, Diagnosis)
 
@@ -55,4 +57,3 @@ class DiagnosisRepository(Repository[Diagnosis]):
         diagnosis.status = "failed"
         diagnosis.error_code = error_code
         await self.session.flush()
-

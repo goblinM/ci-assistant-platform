@@ -5,6 +5,8 @@ from pydantic import BaseModel, Field
 
 
 class RAGDocument(BaseModel):
+    """表示兼容层混合检索返回的知识文档、分数和引用元数据。"""
+
     doc_id: str
     title: str
     source: str
@@ -32,6 +34,8 @@ class RAGDocument(BaseModel):
 
 
 class RAGResult(BaseModel):
+    """封装一次兼容层 RAG 查询的过滤条件、候选统计和命中文档。"""
+
     query: str
     filters: dict = Field(default_factory=dict)
     top_k: int
@@ -41,17 +45,17 @@ class RAGResult(BaseModel):
 
     @property
     def hit_titles(self) -> list[str]:
-        """执行 ``hit_titles`` 对应的领域操作。"""
+        """按当前检索排序依次返回所有命中文档的标题列表。"""
         return [doc.title for doc in self.documents]
 
     @property
     def hit_doc_ids(self) -> list[str]:
-        """执行 ``hit_doc_ids`` 对应的领域操作。"""
+        """按当前检索排序依次返回所有命中文档的稳定标识列表。"""
         return [doc.doc_id for doc in self.documents]
 
     @property
     def scores(self) -> list[float | None]:
-        """执行 ``scores`` 对应的领域操作。"""
+        """按检索排序返回所有命中文档的最终相关性分数。"""
         return [doc.score for doc in self.documents]
 
     def to_references(self) -> list[dict[str, Any]]:

@@ -7,6 +7,8 @@ from pydantic import BaseModel, Field
 
 
 class CreateKnowledgeDocument(BaseModel):
+    """定义带租户作用域、来源信息和大小限制的文本知识负载。"""
+
     tenant_id: UUID
     project_id: UUID | None = None
     provider: Literal["gitlab", "jenkins", "github"] | None = None
@@ -19,12 +21,14 @@ class CreateKnowledgeDocument(BaseModel):
 
 
 class CreateParsedKnowledgeDocument(CreateKnowledgeDocument):
-    """文件解析完成后使用的内部知识文档负载。"""
+    """表示 PDF、DOCX 或 HTML 解析完成后的内部知识文档负载。"""
 
     format: Literal["pdf", "docx", "html"]
 
 
 class KnowledgeDocumentView(BaseModel):
+    """表示可对外查询的知识文档元数据，不暴露完整正文。"""
+
     model_config = {"from_attributes": True}
 
     id: UUID

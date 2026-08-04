@@ -13,7 +13,7 @@ def recall_at_k(
 
 
 def reciprocal_rank(ranked_ids: list[str], expected_ids: set[str]) -> float:
-    """计算首个期望文档的倒数排名。"""
+    """返回首个期望文档排名的倒数，完全未命中时返回零。"""
     for rank, document_id in enumerate(ranked_ids, start=1):
         if document_id in expected_ids:
             return 1.0 / rank

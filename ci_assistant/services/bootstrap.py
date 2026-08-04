@@ -11,7 +11,7 @@ async def sync_configuration(
     session: AsyncSession,
     settings: PlatformSettings,
 ) -> None:
-    """执行 ``sync_configuration`` 对应的领域操作。"""
+    """幂等同步默认租户和 CI 连接的非敏感配置，不持久化真实凭据。"""
     tenant = await session.get(Tenant, settings.app.tenant_id)
     if tenant is None:
         tenant = Tenant(
@@ -54,4 +54,3 @@ async def sync_configuration(
             connection.base_url = configured.base_url
             connection.config = public_config
     await session.flush()
-

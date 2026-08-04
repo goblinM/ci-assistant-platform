@@ -4,6 +4,8 @@ from pydantic import BaseModel, Field
 
 
 class AnalysisTrace(BaseModel):
+    """记录旧分析链路的 RAG、工具、模型、校验和降级追踪字段。"""
+
     trace_id: str
     project_name: str | None = None
     pipeline_id: str | None = None

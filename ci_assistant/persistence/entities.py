@@ -23,6 +23,8 @@ from .models import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
 
 class Tenant(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """表示平台数据隔离和 API Key 绑定的顶层租户。"""
+
     __tablename__ = "tenants"
 
     name: Mapped[str] = mapped_column(String(200))
@@ -30,6 +32,8 @@ class Tenant(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class CIConnection(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """保存租户下 CI Provider 连接的非敏感配置元数据。"""
+
     __tablename__ = "ci_connections"
     __table_args__ = (UniqueConstraint("tenant_id", "external_id"),)
 
@@ -41,6 +45,8 @@ class CIConnection(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class Project(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """表示 Provider 连接下具有唯一引用的租户项目。"""
+
     __tablename__ = "projects"
     __table_args__ = (UniqueConstraint("connection_id", "project_ref"),)
 
@@ -53,6 +59,8 @@ class Project(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class CIEvent(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """保存验签并规范化后的幂等 CI 业务事件。"""
+
     __tablename__ = "ci_events"
     __table_args__ = (
         UniqueConstraint("provider", "connection_id", "external_event_id"),
@@ -103,6 +111,8 @@ class WebhookDelivery(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class Diagnosis(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """保存异步诊断生命周期、结构化结果和稳定失败码。"""
+
     __tablename__ = "diagnoses"
 
     tenant_id: Mapped[UUID] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"))
@@ -117,7 +127,7 @@ class Diagnosis(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class DiagnosisFeedback(UUIDPrimaryKeyMixin, TimestampMixin, Base):
-    """保存用户对单条诊断的结构化反馈。"""
+    """保存租户对单条诊断的唯一评分、建议采纳状态和脱敏评论。"""
 
     __tablename__ = "diagnosis_feedback"
     __table_args__ = (UniqueConstraint("diagnosis_id"),)
@@ -133,6 +143,8 @@ class DiagnosisFeedback(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class AnalysisTrace(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """保存单次诊断使用的模型、索引及脱敏追踪数据。"""
+
     __tablename__ = "analysis_traces"
 
     diagnosis_id: Mapped[UUID] = mapped_column(
@@ -145,6 +157,8 @@ class AnalysisTrace(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class KnowledgeDocument(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """保存租户知识正文、来源、作用域、版本和生命周期状态。"""
+
     __tablename__ = "knowledge_documents"
     __table_args__ = (
         UniqueConstraint("tenant_id", "content_hash", "version"),
@@ -167,6 +181,8 @@ class KnowledgeDocument(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class KnowledgeChunk(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """保存知识文档切片、ACL、向量标识和检索元数据。"""
+
     __tablename__ = "knowledge_chunks"
     __table_args__ = (UniqueConstraint("document_id", "ordinal"),)
 
@@ -185,6 +201,8 @@ class KnowledgeChunk(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class IngestionJob(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """记录知识文档异步索引任务的幂等键、状态和受限错误信息。"""
+
     __tablename__ = "ingestion_jobs"
 
     document_id: Mapped[UUID] = mapped_column(
@@ -196,6 +214,8 @@ class IngestionJob(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class EvaluationRun(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """保存代码、Prompt、模型和索引版本对应的离线评测指标。"""
+
     __tablename__ = "evaluation_runs"
 
     code_version: Mapped[str | None] = mapped_column(String(100))

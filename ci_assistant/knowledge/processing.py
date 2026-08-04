@@ -17,13 +17,15 @@ _SECRET_PATTERNS = [
 
 @dataclass(frozen=True)
 class ProcessedDocument:
+    """封装脱敏规范化后的正文、内容哈希和结构化切片。"""
+
     normalized_content: str
     content_hash: str
     chunks: list[str]
 
 
 def mask_secrets(content: str) -> str:
-    """执行 ``mask_secrets`` 对应的领域操作。"""
+    """遮蔽认证头、常见凭据字段和 GitLab Token，保留非敏感上下文。"""
     masked = content
     for pattern in _SECRET_PATTERNS:
         if pattern.groups:
@@ -37,7 +39,7 @@ def normalize_document(
     content: str,
     format: Literal["markdown", "json", "pdf", "docx", "html"],
 ) -> str:
-    """将 ``normalize_document`` 对应的数据规范化。"""
+    """校验文档大小和格式，规范化 JSON，并在持久化前统一脱敏。"""
     if not content.strip():
         raise ValueError("document content cannot be empty")
     if len(content) > MAX_DOCUMENT_CHARS:
@@ -52,7 +54,7 @@ def normalize_document(
 
 
 def chunk_document(content: str, *, target_chars: int = 800) -> list[str]:
-    """执行 ``chunk_document`` 对应的领域操作。"""
+    """优先按标题和段落切片，超长块定长拆分并保持原有顺序。"""
     if target_chars < 300:
         raise ValueError("target_chars must be at least 300")
     blocks = re.split(r"\n(?=#{1,6}\s)|\n{2,}", content)
@@ -82,7 +84,7 @@ def process_document(
     content: str,
     format: Literal["markdown", "json", "pdf", "docx", "html"],
 ) -> ProcessedDocument:
-    """执行 ``process_document`` 对应的知识库处理流程。"""
+    """规范化、脱敏并切分文档，同时生成用于租户内去重的内容哈希。"""
     normalized = normalize_document(content, format)
     return ProcessedDocument(
         normalized_content=normalized,

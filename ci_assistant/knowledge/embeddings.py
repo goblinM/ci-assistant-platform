@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class Embedder(Protocol):
-    """统一文本向量模型所需的最小契约。"""
+    """定义知识索引所需的批量文本向量与维度查询契约。"""
 
     def encode(
         self,
@@ -26,16 +26,16 @@ class Embedder(Protocol):
         *,
         normalize_embeddings: bool = True,
     ) -> np.ndarray:
-        """计算文本向量。"""
+        """按输入顺序生成二维文本向量矩阵，并可执行归一化。"""
         ...
 
     def get_sentence_embedding_dimension(self) -> int:
-        """返回向量维度。"""
+        """返回当前向量模型为每段输入文本生成的固定向量维度。"""
         ...
 
 
 class HashingEmbedder:
-    """Deterministic local embedding with no model download or GPU runtime."""
+    """提供无需下载模型或 GPU 的确定性本地哈希向量。"""
 
     def __init__(self, dimension: int = 384) -> None:
         self.dimension = dimension
@@ -46,7 +46,7 @@ class HashingEmbedder:
         *,
         normalize_embeddings: bool = True,
     ) -> np.ndarray:
-        """执行 ``encode`` 对应的向量计算。"""
+        """通过稳定 Token 哈希生成可选归一化向量，用于离线和降级场景。"""
         matrix = np.zeros((len(texts), self.dimension), dtype="float32")
         for row, text in enumerate(texts):
             for token in re.findall(r"[\w.-]+", text.lower()):
@@ -60,7 +60,7 @@ class HashingEmbedder:
         return matrix
 
     def get_sentence_embedding_dimension(self) -> int:
-        """获取 ``get_sentence_embedding_dimension`` 对应的数据。"""
+        """返回本地哈希向量器为每段文本配置的固定向量维度。"""
         return self.dimension
 
 
@@ -77,7 +77,7 @@ class SQLiteEmbeddingCache:
         *,
         dimension: int,
     ) -> dict[str, np.ndarray]:
-        """批量读取并校验缓存向量。"""
+        """批量读取并校验缓存向量；缓存损坏或不可用时返回空命中。"""
         if not keys:
             return {}
         try:
@@ -187,7 +187,7 @@ class CachedEmbedder:
         *,
         normalize_embeddings: bool = True,
     ) -> np.ndarray:
-        """按输入顺序组合缓存命中和实时计算向量。"""
+        """按输入顺序合并缓存命中与实时计算结果，并写回缺失向量。"""
         dimension = self.get_sentence_embedding_dimension()
         keys = [
             self._cache_key(text, dimension, normalize_embeddings)
@@ -220,7 +220,7 @@ class CachedEmbedder:
         return np.stack([cached[key] for key in keys]).astype("float32")
 
     def get_sentence_embedding_dimension(self) -> int:
-        """返回底层模型的向量维度。"""
+        """返回缓存所代理的底层向量模型声明的固定向量维度。"""
         return self.embedder.get_sentence_embedding_dimension()
 
     def _cache_key(
@@ -229,7 +229,7 @@ class CachedEmbedder:
         dimension: int,
         normalize_embeddings: bool,
     ) -> str:
-        """生成不包含原始文本的稳定缓存键。"""
+        """使用模型、维度、归一化参数和文本哈希生成不含原文的稳定缓存键。"""
         digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
         namespace = (
             f"{self.model_name}:{dimension}:{int(normalize_embeddings)}:{digest}"

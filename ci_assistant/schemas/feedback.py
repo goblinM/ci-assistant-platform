@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 
 class DiagnosisFeedbackRequest(BaseModel):
-    """创建或更新诊断反馈的请求。"""
+    """定义诊断评分、建议采纳、纠正类型和脱敏评论的写入边界。"""
 
     rating: Literal["helpful", "partially_helpful", "not_helpful"]
     accepted_suggestion: bool | None = None
@@ -17,7 +17,7 @@ class DiagnosisFeedbackRequest(BaseModel):
 
 
 class DiagnosisFeedbackView(BaseModel):
-    """诊断反馈响应。"""
+    """表示单条诊断反馈及其创建、更新时间的 API 查询视图。"""
 
     model_config = {"from_attributes": True}
 
@@ -32,7 +32,7 @@ class DiagnosisFeedbackView(BaseModel):
 
 
 class FeedbackSummaryView(BaseModel):
-    """租户反馈汇总响应。"""
+    """表示租户反馈评分分布和建议采纳率的聚合视图。"""
 
     total: int
     ratings: dict[str, int]

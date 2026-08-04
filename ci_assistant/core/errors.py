@@ -5,6 +5,8 @@ from typing import Any
 
 
 class ErrorCode(str, Enum):
+    """定义对外稳定的平台错误码，避免泄漏底层异常类型。"""
+
     CONFIG_INVALID = "CONFIG_INVALID"
     AUTH_FAILED = "AUTH_FAILED"
     PERMISSION_DENIED = "PERMISSION_DENIED"
@@ -21,6 +23,8 @@ class ErrorCode(str, Enum):
 
 
 class PlatformError(Exception):
+    """携带稳定错误码、HTTP 状态和可选安全详情的平台异常。"""
+
     def __init__(
         self,
         code: ErrorCode,

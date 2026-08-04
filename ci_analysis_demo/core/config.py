@@ -4,6 +4,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    """定义旧兼容接口的模型、GitLab 和本地 RAG 环境配置。"""
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
     app_name: str = "ai-ci-assistant"
     llm_api_url: str

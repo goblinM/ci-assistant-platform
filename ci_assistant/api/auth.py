@@ -22,8 +22,10 @@ _PUBLIC_PREFIXES = (
 
 
 class TenantAuthMiddleware(BaseHTTPMiddleware):
+    """校验租户 API Key，并把租户或管理员身份写入请求上下文。"""
+
     async def dispatch(self, request: Request, call_next):
-        """处理 ``dispatch`` 对应的请求或事件。"""
+        """跳过明确公开端点，其余请求按环境和安全配置执行恒定时间鉴权。"""
         if request.url.path.startswith(_PUBLIC_PREFIXES):
             return await call_next(request)
         settings: PlatformSettings | None = getattr(request.app.state, "settings", None)
@@ -62,7 +64,7 @@ class TenantAuthMiddleware(BaseHTTPMiddleware):
 
 
 def enforce_tenant(request: Request, tenant_id: UUID) -> None:
-    """执行 ``enforce_tenant`` 对应的领域操作。"""
+    """阻止普通 API Key 访问其他租户资源，管理员身份不受该限制。"""
     authorized = getattr(request.state, "tenant_id", None)
     is_admin = getattr(request.state, "is_admin", False)
     if authorized is not None and authorized != tenant_id and not is_admin:
@@ -74,7 +76,7 @@ def enforce_tenant(request: Request, tenant_id: UUID) -> None:
 
 
 def enforce_admin(request: Request) -> None:
-    """执行 ``enforce_admin`` 对应的领域操作。"""
+    """要求当前请求具有平台管理员身份，否则返回稳定权限错误。"""
     if hasattr(request.state, "is_admin") and not request.state.is_admin:
         raise PlatformError(
             ErrorCode.PERMISSION_DENIED,

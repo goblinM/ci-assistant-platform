@@ -14,8 +14,10 @@ router = APIRouter(tags=["observability"])
 
 
 class MetricsMiddleware(BaseHTTPMiddleware):
+    """按稳定路由模板记录 HTTP 请求数量、状态码和处理耗时。"""
+
     async def dispatch(self, request, call_next):
-        """处理 ``dispatch`` 对应的请求或事件。"""
+        """执行请求后记录 Prometheus 指标，避免使用含具体资源 ID 的原始路径。"""
         started = time.perf_counter()
         response = await call_next(request)
         route = request.scope.get("route")
@@ -27,6 +29,5 @@ class MetricsMiddleware(BaseHTTPMiddleware):
 
 @router.get("/metrics", include_in_schema=False)
 async def metrics() -> Response:
-    """执行 ``metrics`` 对应的领域操作。"""
+    """返回 Prometheus 文本格式的当前进程指标快照。"""
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
-

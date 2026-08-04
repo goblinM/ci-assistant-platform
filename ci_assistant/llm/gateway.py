@@ -10,12 +10,16 @@ from ci_assistant.schemas.result import DiagnosisResult
 
 
 class DiagnosisGateway(Protocol):
+    """定义诊断编排可替换的结构化模型网关契约。"""
+
     async def diagnose(self, prompt: str) -> DiagnosisResult:
-        """执行 ``diagnose`` 对应的 CI 故障诊断。"""
+        """根据不可信证据生成并校验结构化诊断结果。"""
         ...
 
 
 class OpenAIDiagnosisGateway:
+    """调用 OpenAI-compatible 服务并将 JSON 响应校验为诊断模型。"""
+
     def __init__(self, config: AIConfig) -> None:
         self.model = config.model
         self.client = AsyncOpenAI(
@@ -26,7 +30,7 @@ class OpenAIDiagnosisGateway:
         )
 
     async def diagnose(self, prompt: str) -> DiagnosisResult:
-        """执行 ``diagnose`` 对应的 CI 故障诊断。"""
+        """提交受控系统指令和不可信证据，解析并校验模型返回的 JSON。"""
         response = await self.client.chat.completions.create(
             model=self.model,
             messages=[
@@ -47,10 +51,10 @@ class OpenAIDiagnosisGateway:
 
 
 class RuleBasedDiagnosisGateway:
-    """Deterministic offline gateway for private deployments and integration tests."""
+    """为私有部署、模型降级和集成测试提供确定性规则诊断。"""
 
     async def diagnose(self, prompt: str) -> DiagnosisResult:
-        """执行 ``diagnose`` 对应的 CI 故障诊断。"""
+        """按稳定错误特征匹配诊断类型，未命中时返回低置信度结果。"""
         lowered = prompt.lower()
         if "modulenotfounderror" in lowered or "no module named" in lowered:
             return DiagnosisResult(
@@ -121,6 +125,8 @@ class RuleBasedDiagnosisGateway:
 
     @staticmethod
     def _result(error_type: str, summary: str, suggestion: str) -> DiagnosisResult:
+        """构造确定性规则命中时使用的中置信度诊断结果。"""
+
         return DiagnosisResult(
             error_type=error_type,
             summary=summary,

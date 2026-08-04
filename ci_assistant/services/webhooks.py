@@ -15,6 +15,8 @@ from ci_assistant.providers.base import CIProvider
 
 @dataclass(frozen=True)
 class WebhookOutcome:
+    """描述一次已验签 Webhook 的幂等处理结果及关联诊断。"""
+
     event_id: UUID | None
     diagnosis_id: UUID | None
     duplicate: bool
@@ -23,6 +25,8 @@ class WebhookOutcome:
 
 
 class WebhookService:
+    """验证并规范化 CI Webhook，幂等保存事件并按策略创建诊断。"""
+
     async def handle(
         self,
         *,
@@ -33,7 +37,7 @@ class WebhookService:
         body: bytes,
         verify_signature: bool = True,
     ) -> WebhookOutcome:
-        """处理 ``handle`` 对应的请求或事件。"""
+        """处理单次 Webhook；重复事件不再创建诊断，失败事件进入异步诊断队列。"""
         if verify_signature:
             await provider.verify_webhook(headers, body)
         payload = json.loads(body)

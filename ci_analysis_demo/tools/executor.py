@@ -20,12 +20,14 @@ logger = logging.getLogger(__name__)
 
 
 class ToolsExecutor:
+    """注册、筛选并隔离执行旧分析链路中的只读本地工具。"""
+
     def __init__(self, gitlab_client=None):
         self._tools: Dict[str, ToolSpec] = {}
         self.gitlab_client = gitlab_client
 
     def register(self, spec: ToolSpec) -> None:
-        """注册工具"""
+        """按唯一名称注册工具定义，重复名称会被明确拒绝。"""
         if spec.name in self._tools:
             raise ValueError(f"Tool already registered: {spec.name}")
 
@@ -74,7 +76,7 @@ class ToolsExecutor:
             arguments: dict[str, Any] | None = None,
             runtime_context: ToolRuntimeContext | None = None,
     ) -> ToolResult:
-        """单个工具执行"""
+        """执行单个已注册工具，并把未知工具和运行异常转换为统一结果。"""
         arguments = arguments or {}
         start = time.perf_counter()
         spec = self._tools.get(tool_name)
@@ -135,7 +137,7 @@ class ToolsExecutor:
             calls: list[dict[str, Any]],
             runtime_context: ToolRuntimeContext | None = None,
     ) -> list[ToolResult]:
-        """批量执行"""
+        """按调用输入顺序逐个执行工具，并保留每项成功或失败结果。"""
         results: list[ToolResult] = []
 
         for call in calls:

@@ -28,7 +28,7 @@ async def upsert_diagnosis_feedback(
     request: Request,
     session: AsyncSession = Depends(get_session),
 ):
-    """创建或更新单条诊断的结构化用户反馈。"""
+    """在诊断租户边界内创建或更新反馈，并在保存评论前执行敏感信息脱敏。"""
     diagnosis = await DiagnosisRepository(session).get(diagnosis_id)
     if diagnosis is None:
         raise PlatformError(
@@ -59,7 +59,7 @@ async def get_diagnosis_feedback(
     request: Request,
     session: AsyncSession = Depends(get_session),
 ):
-    """获取单条诊断的反馈。"""
+    """在诊断租户边界内查询单条反馈，不存在时返回稳定资源错误。"""
     diagnosis = await DiagnosisRepository(session).get(diagnosis_id)
     if diagnosis is None:
         raise PlatformError(
@@ -90,7 +90,7 @@ async def get_feedback_summary(
     request: Request,
     session: AsyncSession = Depends(get_session),
 ):
-    """获取租户级反馈评分和建议采纳汇总。"""
+    """校验租户权限后返回评分分布、建议采纳数量和采纳率汇总。"""
     enforce_tenant(request, tenant_id)
     summary = await DiagnosisFeedbackRepository(session).summary(tenant_id)
     return {

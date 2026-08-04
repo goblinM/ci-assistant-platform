@@ -9,6 +9,8 @@ from .index import FaissIndexStore
 
 
 class HybridRetriever:
+    """在租户 ACL 过滤后的向量候选上融合语义、关键词和元数据分数。"""
+
     def __init__(self, store: FaissIndexStore) -> None:
         self.store = store
 
@@ -22,7 +24,7 @@ class HybridRetriever:
         provider: str | None,
         top_k: int = 5,
     ) -> list[dict[str, Any]]:
-        """按查询条件检索知识数据。"""
+        """扩大向量候选集后执行混合打分，并返回限定数量的租户内排序结果。"""
         candidates = self.store.search(
             query_vector,
             tenant_id=tenant_id,
@@ -52,4 +54,3 @@ class HybridRetriever:
                 + metadata_score
             )
         return sorted(candidates, key=lambda item: item["score"], reverse=True)[:top_k]
-

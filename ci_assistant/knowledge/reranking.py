@@ -31,7 +31,7 @@ class Reranker(Protocol):
         *,
         top_k: int,
     ) -> list[dict[str, Any]]:
-        """返回按相关性分数降序排列的候选。"""
+        """对已通过 ACL 的候选重新评分，并按相关性降序返回 Top K。"""
         ...
 
 

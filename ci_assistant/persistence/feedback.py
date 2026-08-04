@@ -10,7 +10,7 @@ from .entities import DiagnosisFeedback
 
 
 class DiagnosisFeedbackRepository:
-    """持久化诊断反馈并生成租户级汇总。"""
+    """持久化租户诊断反馈，并计算评分分布和建议采纳汇总。"""
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
@@ -25,7 +25,7 @@ class DiagnosisFeedbackRepository:
         corrected_error_type: str | None,
         comment: str | None,
     ) -> DiagnosisFeedback:
-        """按诊断 ID 创建或更新唯一反馈。"""
+        """按诊断 ID 幂等创建或更新唯一反馈，并在当前事务中刷新。"""
         feedback = (
             await self.session.execute(
                 select(DiagnosisFeedback).where(
@@ -54,7 +54,7 @@ class DiagnosisFeedbackRepository:
     async def get_by_diagnosis(
         self, diagnosis_id: UUID
     ) -> DiagnosisFeedback | None:
-        """按诊断 ID 获取反馈。"""
+        """按诊断 ID 查询唯一反馈，不存在时返回空结果。"""
         return (
             await self.session.execute(
                 select(DiagnosisFeedback).where(
@@ -64,7 +64,7 @@ class DiagnosisFeedbackRepository:
         ).scalar_one_or_none()
 
     async def summary(self, tenant_id: UUID) -> dict[str, Any]:
-        """汇总租户反馈数量、评分与建议采纳率。"""
+        """汇总指定租户的反馈总数、评分分布和建议采纳率。"""
         counts = (
             await self.session.execute(
                 select(

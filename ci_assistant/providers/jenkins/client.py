@@ -12,12 +12,14 @@ from ci_assistant.providers.base import (
 
 
 def job_path(project_ref: str) -> str:
-    """执行 ``job_path`` 对应的领域操作。"""
+    """将文件夹分隔的 Jenkins Job 引用编码为嵌套 Remote API 路径。"""
     parts = [part for part in project_ref.split("/") if part]
     return "".join(f"/job/{quote(part, safe='')}" for part in parts)
 
 
 class JenkinsClient:
+    """封装 Jenkins Remote Access API 的只读认证请求和稳定错误映射。"""
+
     def __init__(
         self,
         base_url: str,
@@ -69,4 +71,3 @@ class JenkinsClient:
                 f"{job_path(project_ref)}/{quote(build_id, safe='')}/consoleText"
             )
         ).text
-

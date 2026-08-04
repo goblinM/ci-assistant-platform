@@ -40,6 +40,8 @@ class ToolMode(str, Enum):
 
 
 class ReferenceItem(BaseModel):
+    """表示兼容诊断响应中由真实检索文档转换得到的引用。"""
+
     id: str = Field(min_length=1)
     title: str = Field(min_length=1)
     source: str = Field(min_length=1)
@@ -49,6 +51,8 @@ class ReferenceItem(BaseModel):
 
 
 class AnalysisLogRequest(BaseModel):
+    """定义旧日志分析接口的日志、CI 上下文和分析模式输入。"""
+
     log_text: str = Field(min_length=1)
     project_name: str | None = None
     pipeline_id: str | None = None
@@ -60,6 +64,8 @@ class AnalysisLogRequest(BaseModel):
 
 
 class AnalysisLogResponse(BaseModel):
+    """定义旧日志分析接口保持兼容的结构化诊断与引用响应。"""
+
     error_type: ErrorType
     summary: str = Field(min_length=1)
     reason: str = Field(min_length=1)

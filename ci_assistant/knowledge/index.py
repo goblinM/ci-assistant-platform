@@ -11,6 +11,8 @@ import numpy as np
 
 @dataclass(frozen=True)
 class IndexedChunk:
+    """表示写入向量索引并携带租户 ACL 与来源元数据的知识切片。"""
+
     vector_id: int
     content: str
     tenant_id: str
@@ -20,7 +22,7 @@ class IndexedChunk:
 
 
 class FaissIndexStore:
-    """Versioned FAISS index with atomic CURRENT pointer switching."""
+    """管理版本化 FAISS 索引，并通过 CURRENT 指针完成原子切换。"""
 
     def __init__(self, root: Path, dimension: int) -> None:
         self.root = root
@@ -77,7 +79,7 @@ class FaissIndexStore:
         provider: str | None,
         top_k: int = 5,
     ) -> list[dict[str, Any]]:
-        """按查询条件检索知识数据。"""
+        """加载当前索引，在租户、项目和 Provider ACL 内执行向量检索。"""
         import faiss
 
         version = self.current_version()

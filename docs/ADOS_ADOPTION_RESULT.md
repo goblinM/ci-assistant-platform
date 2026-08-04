@@ -366,3 +366,71 @@ Reranker 或模型服务。
 - 已删除文件名的 Markdown 残留引用检查：无匹配。
 - `git diff --check`：通过。
 - 未运行项目测试、编译或服务；本次仅修改文档。
+
+## P1 核心 Docstring 治理
+
+> 执行日期：2026-08-04
+
+### 实施内容
+
+- 为诊断编排、Webhook、知识服务、Provider 管理、索引、检索、模型网关和只读 Tool
+  执行器补充准确中文类 Docstring。
+- 替换目标文件中“执行对应操作”等占位描述，说明真实顺序、权限、幂等、降级和副作用。
+- 校准 `orchestrator.py` 的日志脱敏及不可信 Prompt 分区注释；保留用户已有代码逻辑。
+- 未修改函数签名、公开 API、依赖、数据库、迁移、CI/CD 或兼容包。
+
+### 验证结果
+
+- ADOS 静态扫描：10 个目标文件的缺失类 Docstring 和 Docstring warning 均归零。
+- `venv/bin/python -m compileall -q ci_assistant ci_analysis_demo`：通过。
+- `venv/bin/pytest -q`：`108 passed, 1 warning in 8.69s`。
+- 唯一 warning 为 FastAPI TestClient 对当前 Starlette 适配层的弃用提示。
+
+### 第二批：公开契约与配置边界
+
+- 为租户鉴权、请求 ID、HTTP 指标、平台配置、稳定错误码、CI 领域模型、Tool 定义以及
+  Diagnosis、Envelope、Knowledge、Result API Schema 补充准确中文 Docstring。
+- 替换目标文件中的占位描述，明确生产配置校验、租户权限、路由指标、Provider 状态统一、
+  日志截断、知识作用域和响应边界；未给简单构造器增加重复说明。
+- ADOS 静态扫描：11 个目标文件的缺失类 Docstring 和 Docstring warning 均归零。
+- `venv/bin/python -m compileall -q ci_assistant ci_analysis_demo`：通过。
+- `venv/bin/pytest -q`：`108 passed, 1 warning in 6.74s`；warning 与第一批相同。
+
+### 第三批：持久化与剩余占位描述
+
+- 为安全 HTML 解析、索引切片、知识处理结果、持久化实体与 Repository、SQLAlchemy
+  Mixin、GitLab/Jenkins Client 和 Provider 补充中文类 Docstring。
+- 替换主包非测试、非迁移代码中剩余的占位描述，覆盖异常响应、日志预处理、知识脱敏与
+  切片、知识版本查询、事务中立 Repository、配置同步和默认 Tool 注册。
+- ADOS 静态扫描：主包公共函数缺口、非测试类缺口及非测试/非迁移占位告警均归零。
+- `venv/bin/python -m compileall -q ci_assistant ci_analysis_demo`：通过。
+- `venv/bin/pytest -q`：`108 passed, 1 warning in 10.33s`；warning 与前两批相同。
+
+### 第四批：剩余有效长度告警
+
+- 校准应用生命周期、反馈 API、文档解析、Embedding 与缓存、ACL 检索、Reranker、反馈
+  持久化、Webhook 审计、GitHub 日志和知识数据集导入等短 Docstring，补足安全边界、
+  返回语义、降级行为和事务约束。
+- 主包非测试、非迁移代码的 Docstring 长度告警归零；保留迁移入口和测试替身中的短描述，
+  避免为满足长度阈值机械扩写。
+- 对 50 个本次变更的 Python 文件移除 Docstring 后进行 AST 对比，全部与 `HEAD` 语义结构
+  一致，确认未改变函数体、签名或运行逻辑。
+- ADOS 最终静态扫描：公共函数缺口、主包非测试类缺口、主包非测试/非迁移告警和 Python
+  解析错误均为零；`validate_adoption.py` 为 `Passed`，14 项检查全部通过。
+- `venv/bin/python -m compileall -q ci_assistant ci_analysis_demo`：通过；
+  `venv/bin/pytest -q`：`108 passed, 1 warning in 6.60s`；`git diff --check`：通过。
+- 唯一 warning 仍为 FastAPI TestClient 对当前 Starlette 适配层的弃用提示。
+
+### 第五批：旧 API 兼容契约
+
+- 为 `ci_analysis_demo` 的 GitLab Client、环境配置、诊断与作业 Schema、RAG 结果、分析
+  Trace、Tool 契约、错误规则和模型异常补充准确中文类 Docstring。
+- 替换 RAG 命中属性和 Tool 结果属性中的占位描述，明确顺序、成功状态和缓存键语义；补充
+  `ToolsExecutor` 的注册与异常隔离说明。
+- 兼容包非测试类 Docstring 缺口归零；未修改旧接口字段、执行顺序、依赖或架构，也未处理
+  私有实现和单纯长度告警。
+- 最终扫描：全项目公共函数缺口、兼容包非测试类缺口和 Python 解析错误均为零；ADOS
+  `validate_adoption.py` 为 `Passed`，14 项检查全部通过。
+- `venv/bin/python -m compileall -q ci_assistant ci_analysis_demo` 和 `git diff --check` 通过；
+  `venv/bin/pytest -q` 为 `108 passed, 1 warning in 6.37s`，warning 仍为既有的 Starlette
+  TestClient 弃用提示。

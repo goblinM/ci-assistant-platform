@@ -9,6 +9,8 @@ from pydantic.dataclasses import dataclass
 
 @dataclass
 class ToolSpec:
+    """声明兼容层工具的调用函数、参数、Provider、只读属性和筛选标签。"""
+
     # ToolSpec
     #   ↓
     # ToolAdapter
@@ -35,12 +37,16 @@ class ToolSpec:
 
 
 class LLMToolCall(BaseModel):
+    """表示模型请求执行的工具名称、调用标识和结构化参数。"""
+
     call_id: str | None = None
     tool_name: str
     arguments: dict[str, Any] = Field(default_factory=dict)
 
 
 class ToolResult(BaseModel):
+    """封装单次兼容层工具调用的结果、受限错误和执行耗时。"""
+
     # 工具结果
     tool_name: str
     success: bool
@@ -57,7 +63,7 @@ class ToolRuntimeContext(BaseModel):
 
     @staticmethod
     def cache_key(*parts: str | int | None) -> str:
-        """执行 ``cache_key`` 对应的领域操作。"""
+        """连接非空资源标识，生成单次请求内预取数据的稳定缓存键。"""
         return ":".join(str(part) for part in parts if part is not None)
 
     def get_prefetched(self, resource: str, *key_parts: str | int | None) -> Any:
@@ -67,29 +73,33 @@ class ToolRuntimeContext(BaseModel):
 
 
 class ToolCallRequest(BaseModel):
+    """定义兼容层内部发起工具调用时使用的名称和参数。"""
+
     # 工具请求
     tool_name: str
     arguments: dict[str, Any] = Field(default_factory=dict)
 
 
 class ToolContext(BaseModel):
+    """汇总规则匹配、工具调用结果及最终 Prompt 所需的工具上下文。"""
+
     primary_error: dict[str, Any] | None = None
     matched_errors: list[dict[str, Any]] = Field(default_factory=list)
     results: list[ToolResult] = Field(default_factory=list)
 
     @property
     def called_tool_names(self) -> list[str]:
-        """执行 ``called_tool_names`` 对应的领域操作。"""
+        """按执行顺序返回所有已调用工具名称，包括失败调用。"""
         return [item.tool_name for item in self.results]
 
     @property
     def successful_tool_names(self) -> list[str]:
-        """执行 ``successful_tool_names`` 对应的领域操作。"""
+        """按执行顺序返回结果标记为成功的工具名称。"""
         return [item.tool_name for item in self.results if item.success]
 
     @property
     def failed_tool_names(self) -> list[str]:
-        """执行 ``failed_tool_names`` 对应的领域操作。"""
+        """按执行顺序返回结果标记为失败的工具名称。"""
         return [item.tool_name for item in self.results if not item.success]
 
     def to_prompt_context(self) -> dict[str, Any]:

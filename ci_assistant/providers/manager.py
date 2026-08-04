@@ -15,18 +15,20 @@ from .jenkins.provider import JenkinsProvider
 
 
 class ProviderManager:
+    """按连接 ID 保存已配置 Provider，并为诊断和 Webhook 提供统一查找入口。"""
+
     def __init__(self, providers: Mapping[str, CIProvider]) -> None:
         self._providers = dict(providers)
 
     def get(self, connection_id: str) -> CIProvider:
-        """执行 ``get`` 对应的领域操作。"""
+        """返回指定连接的 Provider；未知连接使用稳定错误信息失败。"""
         try:
             return self._providers[connection_id]
         except KeyError as exc:
             raise KeyError(f"unknown CI connection: {connection_id}") from exc
 
     def list(self) -> list[CIProvider]:
-        """列出 ``list`` 对应的数据。"""
+        """返回全部已配置 Provider 的独立列表。"""
         return list(self._providers.values())
 
 
@@ -35,7 +37,7 @@ def build_provider_manager(
     *,
     environ: Mapping[str, str] | None = None,
 ) -> ProviderManager:
-    """创建 ``build_provider_manager`` 对应的领域对象或结果。"""
+    """从平台配置和凭据环境构建 Provider，缺少凭据或重复连接时立即失败。"""
     environment = os.environ if environ is None else environ
     providers: dict[str, CIProvider] = {}
     for connection in settings.ci.connections:

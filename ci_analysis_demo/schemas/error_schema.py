@@ -2,6 +2,8 @@ from enum import Enum
 
 
 class ErrorType(str, Enum):
+    """枚举旧兼容接口可返回的稳定 CI 故障分类。"""
+
     dependency_missing = "dependency_missing"
     repo_auth_failed = "repo_auth_failed"
     test_collection_failed = "test_collection_failed"

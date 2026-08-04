@@ -8,6 +8,8 @@ from .repositories import Repository
 
 
 class CIConnectionRepository(Repository[CIConnection]):
+    """提供 CI 连接的通用持久化能力及外部连接 ID 查询。"""
+
     def __init__(self, session: AsyncSession) -> None:
         super().__init__(session, CIConnection)
 
@@ -17,4 +19,3 @@ class CIConnectionRepository(Repository[CIConnection]):
             select(CIConnection).where(CIConnection.external_id == external_id)
         )
         return result.scalar_one_or_none()
-

@@ -6,6 +6,8 @@ from .analysis_schema import ToolMode
 
 
 class CreateJobRequest(BaseModel):
+    """定义旧创建作业示例接口的项目、分支、触发人和重试输入。"""
+
     model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
     project_name: Annotated[str, Field(max_length=64, min_length=1)]
     branch: Annotated[str, Field(max_length=64, min_length=1)]
@@ -22,6 +24,8 @@ class CreateJobRequest(BaseModel):
 
 
 class CreatePipelineRequest(BaseModel):
+    """定义旧创建流水线示例接口的项目、分支和有限重试输入。"""
+
     model_config = ConfigDict(extra="forbid")
     project_name: str = Field(min_length=1, max_length=128)
     branch: str = Field(min_length=1, max_length=128)
@@ -37,11 +41,15 @@ class CreatePipelineRequest(BaseModel):
 
 
 class PipelineResponse(BaseModel):
+    """表示旧流水线示例接口返回的流水线标识和当前状态。"""
+
     pipeline_id: int
     status: str
 
 
 class AnalyzeGitlabJobRequest(BaseModel):
+    """定义旧 GitLab 作业分析接口的资源标识和可选分析模式。"""
+
     # gitlab请求模型
     project_id: str = Field(min_length=1)
     pipeline_id: str | None = None
@@ -56,6 +64,8 @@ class AnalyzeGitlabJobRequest(BaseModel):
 
 
 class GitLabJobContext(BaseModel):
+    """表示从旧 GitLab 作业接口规范化出的只读 CI 运行上下文。"""
+
     # CI上下文模型
     project_id: str
     pipeline_id: str | None = None

@@ -11,13 +11,15 @@ from .repositories import Repository
 
 
 class KnowledgeRepository(Repository[KnowledgeDocument]):
+    """管理租户知识版本、切片、入库任务和逻辑删除。"""
+
     def __init__(self, session: AsyncSession) -> None:
         super().__init__(session, KnowledgeDocument)
 
     async def find_active_hash(
         self, tenant_id: UUID, content_hash: str
     ) -> KnowledgeDocument | None:
-        """执行 ``find_active_hash`` 对应的领域操作。"""
+        """按租户和内容哈希查找尚未删除的知识版本，用于入库去重。"""
         result = await self.session.execute(
             select(KnowledgeDocument).where(
                 KnowledgeDocument.tenant_id == tenant_id,
@@ -33,7 +35,7 @@ class KnowledgeRepository(Repository[KnowledgeDocument]):
         *,
         project_id: UUID | None = None,
     ) -> Sequence[KnowledgeDocument]:
-        """列出 ``list_scoped`` 对应的数据。"""
+        """列出租户全局及指定项目可见的未删除知识文档。"""
         statement = select(KnowledgeDocument).where(
             KnowledgeDocument.tenant_id == tenant_id,
             KnowledgeDocument.status != "deleted",
@@ -53,7 +55,7 @@ class KnowledgeRepository(Repository[KnowledgeDocument]):
         title: str,
         project_id: UUID | None,
     ) -> KnowledgeDocument | None:
-        """执行 ``latest_version`` 对应的领域操作。"""
+        """查找同租户、标题和项目作用域下最新的未删除版本。"""
         statement = (
             select(KnowledgeDocument)
             .where(
@@ -72,7 +74,7 @@ class KnowledgeRepository(Repository[KnowledgeDocument]):
         document: KnowledgeDocument,
         chunks: list[str],
     ) -> None:
-        """执行 ``add_chunks`` 对应的领域操作。"""
+        """按原始顺序保存文档切片，并复制检索所需的作用域和来源元数据。"""
         self.session.add_all(
             [
                 KnowledgeChunk(
@@ -98,7 +100,7 @@ class KnowledgeRepository(Repository[KnowledgeDocument]):
     async def create_ingestion_job(
         self, document: KnowledgeDocument, idempotency_key: str
     ) -> IngestionJob:
-        """创建 ``create_ingestion_job`` 对应的领域对象或结果。"""
+        """为知识版本创建具有唯一幂等键的异步索引任务。"""
         job = IngestionJob(
             document_id=document.id,
             status="queued",
@@ -110,6 +112,6 @@ class KnowledgeRepository(Repository[KnowledgeDocument]):
         return job
 
     async def logical_delete(self, document: KnowledgeDocument) -> None:
-        """删除 ``logical_delete`` 对应的数据。"""
+        """将知识文档标记为已删除，保留审计和后续索引重建依据。"""
         document.status = "deleted"
         await self.session.flush()

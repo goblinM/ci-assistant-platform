@@ -34,10 +34,10 @@ def create_app(
     readiness_checks: Mapping[str, ReadinessCheck] | None = None,
     initialize_infrastructure: bool = False,
 ) -> FastAPI:
-    """创建 ``create_app`` 对应的领域对象或结果。"""
+    """创建并装配平台 FastAPI 应用，可选择初始化真实基础设施。"""
     @asynccontextmanager
     async def lifespan(application: FastAPI):
-        """管理应用启动与关闭期间的资源生命周期。"""
+        """初始化配置、数据库、Redis、Provider 和任务派发器，并在关闭时释放资源。"""
         if not initialize_infrastructure:
             yield
             return
@@ -49,12 +49,12 @@ def create_app(
         redis = Redis.from_url(settings.redis.url.get_secret_value())
 
         async def database_ready() -> None:
-            """检查 ``database_ready`` 对应的就绪状态。"""
+            """通过轻量 SQL 验证 PostgreSQL 会话可用。"""
             async with database.session() as session:
                 await session.execute(text("SELECT 1"))
 
         async def redis_ready() -> None:
-            """检查 ``redis_ready`` 对应的就绪状态。"""
+            """通过 Ping 验证 Redis Broker 可用。"""
             await redis.ping()
 
         application.state.settings = settings
@@ -110,7 +110,7 @@ app = create_app(initialize_infrastructure=True)
 
 
 def main() -> None:
-    """运行当前模块的命令行入口。"""
+    """按环境变量启动 CI Assistant Platform 的 Uvicorn 服务入口。"""
     uvicorn.run(
         "ci_assistant.main:app",
         host=os.getenv("APP_HOST", "0.0.0.0"),

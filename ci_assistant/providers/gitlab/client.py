@@ -12,6 +12,8 @@ from ci_assistant.providers.base import (
 
 
 class GitLabClient:
+    """封装 GitLab 只读 HTTP 请求，并将上游失败映射为稳定 Provider 异常。"""
+
     def __init__(self, base_url: str, private_token: str, timeout: float = 20) -> None:
         self.base_url = base_url.rstrip("/")
         self.private_token = private_token

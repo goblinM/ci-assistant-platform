@@ -12,6 +12,8 @@ ToolCallable = Callable[..., Awaitable[dict[str, Any]]]
 
 
 class ToolSpec(BaseModel):
+    """定义只读 Provider Tool 的实现、能力要求和候选筛选元数据。"""
+
     model_config = {"arbitrary_types_allowed": True}
 
     name: str
@@ -22,4 +24,3 @@ class ToolSpec(BaseModel):
     trigger_keywords: frozenset[str] = Field(default_factory=frozenset)
     read_only: bool = True
     enabled: bool = True
-

@@ -7,6 +7,8 @@ from ci_assistant.providers.base import CIProvider
 
 
 class ProviderToolExecutor:
+    """按启用状态、只读策略、项目允许列表和 Provider 能力筛选并执行工具。"""
+
     def __init__(self, specs: list[ToolSpec]) -> None:
         self._specs = {spec.name: spec for spec in specs}
 
@@ -17,7 +19,7 @@ class ProviderToolExecutor:
         text: str = "",
         allowed_tools: set[str] | None = None,
     ) -> list[ToolSpec]:
-        """执行 ``candidates`` 对应的领域操作。"""
+        """返回当前 Provider 和日志特征允许使用的只读工具候选。"""
         normalized = text.lower()
         candidates = []
         for spec in self._specs.values():
@@ -41,7 +43,7 @@ class ProviderToolExecutor:
         *,
         allowed_tools: set[str] | None = None,
     ) -> dict[str, Any]:
-        """执行 ``execute`` 对应的领域操作。"""
+        """再次校验工具权限与 Provider 能力后执行，防止绕过候选筛选直接调用。"""
         try:
             spec = self._specs[name]
         except KeyError as exc:
@@ -55,4 +57,3 @@ class ProviderToolExecutor:
                 f"provider {provider.provider_type} lacks {spec.capability.value}"
             )
         return await spec.func(provider, **arguments)
-

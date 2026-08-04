@@ -114,7 +114,7 @@ async def _diagnose(diagnosis_id: str) -> dict[str, Any]:
             reranker = build_reranker(settings.knowledge.reranker)
 
             async def retrieve(query: str) -> list[Reference]:
-                """按查询条件检索知识数据。"""
+                """在租户 ACL 内执行 Hybrid 检索和可降级精排，并转换为真实引用。"""
                 vector = embedder.encode([query])[0]
                 final_top_k = 5
                 candidates = hybrid.retrieve(

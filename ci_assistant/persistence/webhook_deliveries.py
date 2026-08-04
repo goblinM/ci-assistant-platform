@@ -58,7 +58,7 @@ class WebhookDeliveryRepository:
         external_event_id: str | None = None,
         error_code: str | None = None,
     ) -> None:
-        """完成投递记录并保存最终处理结果。"""
+        """补全投递的租户、验签、状态和错误信息，并记录处理完成时间。"""
         delivery = await self.session.get(WebhookDelivery, delivery_id)
         if delivery is None:
             raise RuntimeError("Webhook delivery audit record not found")

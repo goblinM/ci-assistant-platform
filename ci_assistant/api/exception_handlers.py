@@ -16,7 +16,7 @@ def _request_id(request: Request) -> str:
 
 
 async def platform_error_handler(request: Request, exc: PlatformError) -> JSONResponse:
-    """执行 ``platform_error_handler`` 对应的领域操作。"""
+    """将可预期平台异常转换为带请求 ID 的稳定 API Envelope。"""
     return JSONResponse(
         status_code=exc.status_code,
         content={
@@ -32,7 +32,7 @@ async def platform_error_handler(request: Request, exc: PlatformError) -> JSONRe
 
 
 async def unhandled_error_handler(request: Request, exc: Exception) -> JSONResponse:
-    """执行 ``unhandled_error_handler`` 对应的领域操作。"""
+    """记录未处理异常并返回不泄漏内部细节的统一 500 响应。"""
     logger.exception("Unhandled API error", extra={"request_id": _request_id(request)})
     return JSONResponse(
         status_code=500,
@@ -46,4 +46,3 @@ async def unhandled_error_handler(request: Request, exc: Exception) -> JSONRespo
             },
         },
     )
-

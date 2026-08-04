@@ -18,6 +18,8 @@ from typing import Pattern, Callable, Any
 
 @dataclass(frozen=True)
 class ErrorKeywordRule:
+    """声明兼容层日志故障类型对应的首个正则关键词匹配规则。"""
+
     error_type: str
     keyword: str
     # re pattern 规则匹配

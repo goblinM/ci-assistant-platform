@@ -32,6 +32,8 @@ def normalize_status(result: str | None, building: bool = False) -> RunStatus:
 
 
 class JenkinsProvider:
+    """将 Jenkins Build、Job、Console、Changeset 和事件映射到统一 CI 协议。"""
+
     provider_type = "jenkins"
     capabilities = frozenset(
         {
@@ -170,4 +172,3 @@ class JenkinsProvider:
                 value = action[key]
                 return value.get(nested) if nested and isinstance(value, dict) else value
         return None
-

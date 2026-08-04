@@ -16,26 +16,26 @@ from ci_assistant.core.config import UnlimitedOCRConfig
 
 
 class DocumentParsingError(ValueError):
-    """文档无法安全解析时的稳定错误边界。"""
+    """表示文档格式无效、内容为空或超出安全解析限制。"""
 
 
 class DocumentParserUnavailableError(DocumentParsingError):
-    """解析所需外部服务不可用。"""
+    """表示文档解析依赖或外部 OCR 服务暂时不可用。"""
 
 
 @dataclass(frozen=True)
 class ParsedDocument:
-    """规范化后的文档解析结果。"""
+    """封装已安全解析的文本正文及其原始文件格式。"""
 
     content: str
     source_format: str
 
 
 class PDFRenderer(Protocol):
-    """PDF 页面渲染器协议。"""
+    """定义把受限 PDF 字节渲染为逐页图片的协议。"""
 
     def render(self, data: bytes) -> list[bytes]:
-        """将 PDF 页面渲染为 PNG 字节。"""
+        """在资源限制内把 PDF 字节渲染为逐页 PNG。"""
         ...
 
 
@@ -54,7 +54,7 @@ class PyMuPDFRenderer:
         self.max_total_pixels = max_total_pixels
 
     def render(self, data: bytes) -> list[bytes]:
-        """验证 PDF 并将页面渲染为 PNG。"""
+        """校验页数、加密和总像素限制后，将 PDF 页面渲染为 PNG。"""
         try:
             import fitz
         except ImportError as exc:
@@ -147,6 +147,8 @@ class UnlimitedOCRClient:
 
 
 class _SafeHTMLTextParser(HTMLParser):
+    """只提取本地 HTML 可见文本，不执行脚本、样式或外部资源请求。"""
+
     _BLOCK_TAGS = {"p", "div", "section", "article", "li", "tr", "pre", "br"}
 
     def __init__(self) -> None:
@@ -155,7 +157,7 @@ class _SafeHTMLTextParser(HTMLParser):
         self.hidden_depth = 0
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        """记录安全标签的结构分隔并屏蔽主动内容。"""
+        """记录安全结构分隔，并进入脚本、样式等主动内容的屏蔽区。"""
         if tag in {"script", "style", "noscript"}:
             self.hidden_depth += 1
             return
@@ -179,7 +181,7 @@ class _SafeHTMLTextParser(HTMLParser):
             self.parts.append("\n")
 
     def handle_data(self, data: str) -> None:
-        """仅收集非主动内容区域的文本。"""
+        """只收集脚本、样式和 noscript 屏蔽区之外的可见文本。"""
         if not self.hidden_depth:
             self.parts.append(data)
 

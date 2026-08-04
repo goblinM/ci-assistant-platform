@@ -46,7 +46,7 @@ def _document_content(item: dict[str, Any]) -> str:
 
 
 async def import_dataset(path: Path, tenant_id: UUID) -> dict[str, Any]:
-    """执行 ``import_dataset`` 对应的知识库处理流程。"""
+    """导入结构化 JSON 知识集、去重创建文档，并发布租户索引。"""
     raw = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(raw, list):
         raise ValueError("knowledge dataset root must be a JSON array")
@@ -105,7 +105,7 @@ async def import_dataset(path: Path, tenant_id: UUID) -> dict[str, Any]:
 
 
 def main() -> None:
-    """运行当前模块的命令行入口。"""
+    """解析数据集路径和租户参数，执行批量导入并输出 JSON 汇总。"""
     parser = argparse.ArgumentParser(
         description="Bulk-import a structured JSON knowledge dataset and publish one index."
     )

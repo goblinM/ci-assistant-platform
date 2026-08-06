@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- 校准 Agent 面试材料与 `ci_assistant` 0.6.2 主平台实现边界，并新增 16 周 AI Agent
+  学习跟进清单。
 - 收敛现行工程文档入口，移除已完成迁移阶段的重复分析、开发、跟进和产品化设计文档。
 - 增加 Webhook 全投递脱敏审计和 GitLab 无匹配 Runner 诊断。
 - 新增 ADOS `PROJECT_ONBOARDING.md` 快速接手入口。

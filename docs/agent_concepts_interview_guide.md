@@ -1,5 +1,10 @@
 # Agent 技术面试速查：结合 AI CI 日志分析助手
 
+> 本文以 `ci_assistant` 0.6.2 主运行包为事实基线。旧包 `ci_analysis_demo` 中的
+> `tool_mode=llm`、两轮工具选择等实现只作为历史原型参考，不代表当前主平台已经具备
+> 模型驱动的多轮 Agent Loop。配套学习计划见
+> [AI Agent 学习跟进清单](agent_learning_tracker.md)。
+
 ## 1. 核心概念速记
 
 ### LLM
@@ -39,7 +44,9 @@ Final Answer / Next Action
 在项目里：
 
 - 当前项目已经具备 Agent 的基础组件：LLM、RAG、Tool、trace、fallback、评测。
-- 但还不是完整自主 Agent，因为还没有持续多轮任务循环、长期记忆和真实写入动作。
+- 当前主平台由服务端按固定顺序执行日志预处理、RAG、候选只读工具和一次诊断调用。
+- 但还不是完整自主 Agent，因为没有模型驱动的持续多轮任务循环、可恢复 Agent State、
+  长期记忆和真实写入动作。
 
 面试一句话：
 
@@ -51,13 +58,15 @@ Tool 是 Agent 可以调用的外部能力。
 
 在项目里：
 
-- `query_failure_history`
-- `query_pipeline_context`
-- `query_job_context`
-- `check_dependency_file`
-- `query_recent_commits`
+- `get_run_context`
+- `get_job_context`
+- `get_job_log`
+- `get_changes`
 
-这些工具通过 `ToolSpec`、`CI_TOOLS_SCHEMA`、`ToolsExecutor` 统一注册、筛选、执行和审计。
+这些工具通过 `ToolSpec`、默认工具注册表和 `ProviderToolExecutor` 统一注册、筛选和执行。
+执行器同时检查 enabled、read-only、项目允许列表和 Provider Capability；当前 trace 记录
+调用名称和结果状态，但尚未形成完整的逐步 Agent 轨迹审计。当前诊断编排器会直接获取
+Job 日志，候选工具循环实际组装的是 run、job 和 changes 三类上下文参数。
 
 面试一句话：
 
@@ -77,7 +86,7 @@ Tool 更像一个 API 或函数；Skill 更像一套 SOP。
 在项目里：
 
 - 目前还没有显式 Skill 系统。
-- 但 `docs/tool_calling_optimization.md` 和 Prompt 模板已经具备沉淀 Skill 的基础。
+- 但现有 Tool 注册表、CI 故障知识和排障文档已经具备沉淀 Skill 的基础。
 
 面试一句话：
 
@@ -95,8 +104,8 @@ MCP 可以理解为让模型或 Agent 标准化连接外部工具、资源和上
 
 在项目里：
 
-- 当前 `ToolsExecutor` 只实现了本地 `local` provider。
-- `ToolSpec.provider` 已预留 `mcp`、`http`、`skill` 等扩展方向。
+- 当前主平台使用进程内 `ProviderToolExecutor` 调用统一 CI Provider 的只读能力。
+- 还没有实现 MCP Host、Client 或 Server，也没有 MCP transport、session 和授权映射。
 
 面试一句话：
 
@@ -138,14 +147,14 @@ Final: 给出诊断和建议
 
 项目对应：
 
-- `tool_mode=llm` 接近 ReAct 的雏形。
-- 第一轮 LLM 选择工具。
-- 后端执行工具。
-- 第二轮 LLM 基于工具结果生成最终诊断。
+- 旧兼容包的 `tool_mode=llm` 曾提供两轮受控工具选择原型。
+- 当前 `ci_assistant` 主平台并未继承该模式，而是由服务端根据日志关键词、Provider
+  Capability 和参数完整性筛选工具，执行完成后进行一次诊断调用。
 
 面试亮点：
 
-> 我没有一开始让模型无限自主循环，而是做成两轮受控 ReAct：先选择工具，再诊断，便于审计、限流和安全控制。
+> 当前主平台不是 ReAct，而是确定性 Workflow 加受控只读 Tool Calling。这样优先保证
+> 稳定、可测试和可审计；下一步会在保留 Workflow 基线的前提下增加有界 Agent Loop。
 
 ### 2.2 Plan-and-Execute
 
@@ -249,10 +258,11 @@ Agent 是动态流程，模型可以根据上下文决定下一步。
 
 ### 项目中的取舍
 
-当前项目是 Workflow + 局部 Agent 能力：
+当前项目是 Workflow + Agent-ready 基础能力：
 
-- 统一入口和 rule tool 是 Workflow。
-- `tool_mode=llm` 是受控 Agent 能力。
+- 主平台统一入口、RAG、候选工具和诊断调用是确定性 Workflow。
+- Tool、trace、fallback 和评测是后续 Agent 化所需的基础设施。
+- 旧兼容包的 `tool_mode=llm` 只能作为历史实验，不能说成主平台现行能力。
 - 未来写入动作必须人机协同。
 
 面试回答：
@@ -269,11 +279,12 @@ Agent 记忆通常分三类。
 
 项目对应：
 
-- 当前请求的 `log_text`
-- `RAGResult`
-- `ToolContext`
-- `AnalysisTrace`
-- `ToolRuntimeContext`
+- 当前诊断请求中的预处理日志。
+- 本次检索得到的 `Reference` 列表。
+- 本次只读工具结果。
+- 诊断级 `analysis_trace`。
+
+这些是单次任务上下文和追踪数据，还没有统一的 Agent State 或 thread checkpoint。
 
 ### 4.2 Episodic Memory
 
@@ -328,15 +339,17 @@ Harness 可以理解为 Agent 的运行外壳和控制框架。
 
 在项目里的对应关系：
 
-- `analyze_log_by_mode`：调度 harness。
-- `ToolsExecutor`：工具执行 harness。
-- `AnalysisTrace`：观测与审计。
-- `_call_with_retry`：LLM 调用可靠性。
-- `evaluate_ci_assistant.py`：评测 harness。
+- `DiagnosisOrchestrator`：编排日志预处理、RAG、工具和诊断网关。
+- `ProviderToolExecutor`：候选工具筛选和二次权限校验。
+- `analysis_traces`：保存诊断级追踪结果。
+- Celery Worker：重试、异步执行和任务终态管理。
+- 固定诊断、排序数据集及评测脚本：提供回归基线。
 
 面试一句话：
 
-> Harness 是把 LLM、Tool、状态、权限、评测串起来的执行框架。我的项目虽然没有叫 harness，但 `analyze_log_by_mode + ToolsExecutor + AnalysisTrace + eval script` 已经具备 harness 的核心职责。
+> Harness 是把 LLM、Tool、状态、权限、失败处理和评测串起来的执行框架。我的项目已有
+> Orchestrator、只读 Executor、Celery、trace 和评测基础，但还缺多轮状态、checkpoint、
+> resume 和逐步轨迹评测。
 
 ## 6. OpenClaw 和 Hermes 区别
 
@@ -376,7 +389,10 @@ Harness 可以理解为 Agent 的运行外壳和控制框架。
 
 ### 面试对比讲法
 
-> OpenClaw 更像平台型 Agent 框架，强调多渠道、技能生态、插件和编排；Hermes 更强调长期记忆、自改进和重复任务优化。映射到我的项目，OpenClaw 的思路更像我现在做的 ToolSpec、ToolsExecutor、Skill 化扩展；Hermes 的思路更像后续要补的 episodic memory、用户反馈和历史诊断学习。
+> OpenClaw 更像平台型 Agent Runtime，强调多渠道、技能生态、插件和编排；Hermes 更强调
+> 长期记忆、自改进和重复任务优化。映射到我的项目，OpenClaw 的思路更接近现有
+> `ToolSpec`、`ProviderToolExecutor` 和未来 Skill 扩展；Hermes 的思路更接近后续要补的
+> episodic memory、用户反馈和受控经验写入。
 
 ## 7. 结合项目的 Agent 问答
 
@@ -396,31 +412,42 @@ CI 排障涉及代码、流水线、权限和可能的写入动作，安全边�
 
 答：
 
-我把工具抽象成 `ToolSpec`，包含 name、description、parameters_schema、provider、read_only、tags、trigger_keywords。工具通过 `CI_TOOLS_SCHEMA` 统一维护，再注册到 `ToolsExecutor`。执行器负责工具筛选、依赖注入、异常隔离、耗时记录和结果裁剪。
+我把主平台只读工具抽象成 `ToolSpec`，包含 name、description、func、capability、tags、
+trigger_keywords、read_only 和 enabled。默认注册表集中维护工具，`ProviderToolExecutor`
+先筛选候选，在执行时再次检查启用状态、只读属性、项目允许列表和 Provider Capability。
 
 ### Q4：rule tool 和 llm tool 有什么区别？
 
 答：
 
-rule tool 是服务端根据错误规则和上下文选择工具，稳定可控；llm tool 是模型第一轮自主选择工具，后端受控执行，再第二轮生成诊断。我的项目两种都支持，默认更推荐 rule，因为面向工程落地更稳定。
+当前主平台只有服务端确定性筛选：根据日志关键词、Provider Capability、项目允许列表和参数
+完整性选择工具。旧兼容包曾实验模型选择工具，但不能描述成主平台现行能力。后续若增加
+LLM Tool Selection，会保留当前模式作为稳定基线并做对照评测。
 
 ### Q5：如何防止 Agent 乱调工具？
 
 答：
 
-后端限制候选工具，而不是让模型看到所有工具。限制包括 read_only、allowed_tags、allowed_providers、max_tools、max_tool_calls。未知工具会被 executor 拒绝，单个工具异常不会打崩主流程。写入类工具未来必须走权限和人工确认。
+当前主平台不让模型直接决定工具。后端按 enabled、read_only、项目允许列表、Provider
+Capability、触发关键词和最大调用数限制执行；执行阶段再次校验，单个工具异常会转换为
+受控错误结果。未来开放模型选择时，未知工具、参数 Schema、超时和预算仍必须由宿主校验，
+写入类工具必须走权限和人工确认。
 
 ### Q6：RAG 和 Tool 结果怎么进入 Prompt？
 
 答：
 
-RAG 结果通过 `RAGResult.to_prompt_context` 进入 Prompt，并受 context budget 控制。Tool 结果通过 `ToolContext.to_prompt_context` 或 tool result dump 进入 Prompt，并经过 result_trimmer 裁剪。这样控制 token 成本和上下文噪声。
+主平台把预处理日志、真实检索引用和工具结果分别标记为 `CI LOG (untrusted)`、
+`KNOWLEDGE (untrusted)` 和 `TOOLS (untrusted)` 后进入 Prompt。日志已有长度控制和脱敏，
+但 Agent 化之前仍需补充统一的 observation 裁剪、总 context budget 和逐步压缩策略。
 
 ### Q7：如何做 Agent 记忆？
 
 答：
 
-短期记忆是当前请求里的 trace、RAGResult、ToolContext。语义记忆是 knowledge_docs。下一步会把每次分析 trace 和用户反馈沉淀成 episodic memory，把高频排障 SOP 做成 Skill，也就是 procedural memory。
+当前项目只有单次诊断上下文、`analysis_trace` 和语义知识库，还没有完整 Agent Memory。
+下一步可以在租户隔离和人工审核边界下，把诊断与反馈沉淀成 episodic memory，把高频排障
+SOP 变成 procedural memory，也就是 Skill。
 
 ### Q8：如何评估 Agent？
 
@@ -458,7 +485,9 @@ RAG 结果通过 `RAGResult.to_prompt_context` 进入 Prompt，并受 context bu
 
 ### 表达 3：Harness 是工程化核心
 
-> Agent 的难点不只是 Prompt，而是 harness：怎么调度模型、执行工具、管理状态、处理失败、记录 trace 和做评测。我的项目里 `analyze_log_by_mode`、`ToolsExecutor`、`AnalysisTrace` 和评测脚本承担了这部分职责。
+> Agent 的难点不只是 Prompt，而是 Harness：怎么调度模型、执行工具、管理状态、处理失败、
+> 记录 trace 和做评测。我的项目里 `DiagnosisOrchestrator`、`ProviderToolExecutor`、Celery、
+> `analysis_traces` 和固定评测承担了基础职责；checkpoint、resume 和逐步轨迹仍是后续工作。
 
 ### 表达 4：记忆要分层
 
@@ -487,3 +516,127 @@ OpenClaw / Hermes 的对比可作为面试中的行业观察，不建议讲得�
 - OpenClaw Tools / Skills / Plugins overview: https://github.com/openclaw/openclaw/blob/main/docs/tools/index.md
 - Hermes Persistent Memory: https://hermes-agent.nousresearch.com/docs/user-guide/features/memory/
 - Hermes memory system overview: https://hermes-agent.ai/blog/hermes-agent-memory-system
+
+## 11. 求职定位与当前能力基线
+
+### 推荐定位
+
+当前项目最适合支撑以下求职主线：
+
+> Python 后端能力较强、具备 RAG、Tool Calling、评测和安全治理经验的 AI Agent 应用
+> 工程师，并可扩展到 AI 平台工程、Agent 工程、AI Infra 应用层及研发效能/AIOps 岗位。
+
+不建议把主要精力投入“大模型预训练/算法研究岗”。项目的差异化是 AI Agent 工程、Python
+后端、CI/CD 领域、安全治理和评测闭环的组合，而不是模型训练。
+
+### 已有能力
+
+| 能力 | 证据等级 | 当前事实 |
+| --- | --- | --- |
+| FastAPI AI 应用平台 | implemented | API、鉴权、健康检查、指标和异步任务入口已实现 |
+| 多 CI Provider 抽象 | implemented | GitLab、Jenkins、GitHub Actions 共享 `CIProvider` |
+| RAG 工程链路 | implemented | FAISS、Hybrid Retrieval、ACL、Reranker 和真实引用 |
+| Tool 安全执行层 | implemented | enabled、read-only、允许列表和 Capability 双重校验 |
+| 结构化输出与降级 | implemented | Pydantic 结果、规则网关和模型失败 fallback |
+| 异步可靠性基础 | implemented | Celery late ack、worker lost reject、退避重试和队列路由 |
+| 评测与反馈 | implemented | 固定 Case、排序指标和租户级反馈接口 |
+| AI 安全治理 | implemented | Secret Mask、租户 ACL、Webhook 验签和不可信 Prompt 分区 |
+
+### 影响 Agent 定位的主要缺口
+
+1. **模型驱动的多轮 Agent Loop**：当前工具由服务端确定性筛选，没有 observation 后的
+   再规划。
+2. **可恢复 Agent State**：没有 goal、step、observation、budget、stop reason 和
+   checkpoint/resume 的统一状态。
+3. **Agent Memory**：知识库属于 semantic memory；反馈和历史诊断尚未形成受控 episodic
+   memory，高频排障流程也没有形成 procedural memory/Skill。
+4. **Human-in-the-loop 状态机**：默认只读边界已实现，但尚无动作提案、审批、恢复和执行
+   审计链路。
+5. **Trajectory Evaluation**：已有结果与 RAG 评测，尚缺工具选择、任务成功、步骤效率、
+   越权率、恢复率和成本指标。
+
+面试时必须使用以下边界：
+
+> 当前系统是 Agent-ready 的受控 CI 诊断 Workflow。下一步是在保留稳定基线的前提下，
+> 增加有界 Agent Loop、持久化状态、人工审批和轨迹评测。
+
+## 12. 学习资料优先级
+
+### S 级：主线精学
+
+1. **learn-claude-code**：第一优先级。重点学习 Agent Loop、工具结果回灌、任务状态、
+   最大轮数、上下文压缩、错误恢复和 Harness，而不是只运行示例。
+2. **Hello-Agents**：用于建立 Agent、ReAct、Planning、Reflection、Memory、Multi-Agent、
+   Evaluation 和安全的完整知识地图；RAG 和 Prompt 基础可快速复习。
+3. **LangChain/LangGraph**：先掌握 Message、Tool 和 Structured Output，再重点学习
+   LangGraph State、Checkpoint、Persistence、Interrupt、Resume 和 Human-in-the-loop。
+4. **nanobot**：精读相对小型的真实 Agent Runtime，重点关注 Agent Loop、Tool Registry、
+   Session、Memory、Skill、Provider 和上下文构造。
+
+学习 LangGraph 前应先手写最小 Agent Loop。否则容易只会框架 API，不能解释状态、停止条件、
+错误恢复和权限边界。主平台也不应为了简历立即重写为 LangGraph，应先通过独立实验和评测
+证明收益。
+
+### A 级：面试强化
+
+- **小林 Coding**：按 Agent、Tool Calling、RAG、LangChain/LangGraph、大模型工程顺序
+  复盘。每道题先口述，再看答案，并补一个当前项目的真实锚点。
+- **AgentGuide**：按 Agent 架构、RAG、Tool、MCP、评测、上下文工程和项目设计标签查漏。
+- **ai-agent-interview-guide**：用于模拟追问、检查覆盖面和改进表达，不照搬项目与指标。
+
+### B 级：架构选读
+
+- **OpenClaw**：选读 Runtime、Workspace、Session、Tool Policy、Skills、Plugins 和多 Agent
+  routing；不复刻整个通用平台。
+- **Hermes Agent**：重点学习 Persistent Memory、Session Search、Skill 演进以及 Memory/
+  Skill 写入审批。
+- **Agent-Learning-Hub**：作为专项资料索引，不作为线性主教材。
+
+建议时间分配：项目实践 30%，learn-claude-code 与手写 Loop 25%，LangGraph 20%，nanobot
+源码 10%，面试训练 10%，OpenClaw/Hermes 选读 5%。
+
+## 13. 项目演进优先级
+
+以下内容是学习和设计建议，不等同于已经进入 `docs/TODO.md` 的正式产品待办。
+
+### P0：直接提升 Agent 工程能力
+
+1. `recommended`：增加实验性、有最大轮数/超时/Token 预算的 Agent Loop，保留当前
+   Workflow 为稳定基线。
+2. `recommended`：设计 Agent Run/Step、observation、stop reason、checkpoint 和 replay。
+3. `recommended`：建立 tool precision/recall、task success、重复调用、越权调用、延迟和
+   成本评测。
+
+### P1：补齐生产 Agent 特征
+
+1. `recommended`：建立动作提案、Policy、人工审批、短期授权、幂等执行和审计状态机。
+2. `enhanced`：利用现有 diagnosis、trace、feedback 建立经审核的 episodic memory。
+3. `recommended`：将依赖缺失、Runner 不可用、Docker Build 和权限失败等路径沉淀为 Skill。
+4. `recommended`：实现只读 MCP Adapter 实验，验证工具发现、Schema、授权、租户上下文、
+   超时和错误映射。
+
+### P2：指标证明必要后再做
+
+1. `recommended`：只对低置信度、证据冲突或高风险动作启用 Critic/Reflection。
+2. `extension`：只有单 Agent 存在上下文隔离、并行调查或职责约束瓶颈时，再评估 Multi-Agent。
+
+### 暂不优先
+
+- 从头训练模型或深挖 RLHF/PPO/GRPO 实现。
+- 复刻 OpenClaw 或同时引入多个 Agent 框架。
+- 无评测地增加 Multi-Agent、聊天 UI 或新的向量数据库。
+- 为“生产级”表述强行引入 Kubernetes。
+- 自动修改代码或重跑 CI；写操作必须先完成授权和人工审批设计。
+
+## 14. 分阶段学习产出
+
+完整打勾清单见 [AI Agent 学习跟进清单](agent_learning_tracker.md)。四阶段目标如下：
+
+1. **第 1—4 周**：手写有界 Agent Loop，掌握 Tool、Context、停止条件和失败恢复。
+2. **第 5—8 周**：使用 LangGraph 对照实现 State、Checkpoint、Memory 和 HITL。
+3. **第 9—12 周**：建立任务、轨迹、安全、成本和 Workflow/Agent 对比评测。
+4. **第 13—16 周**：实现 Skill/MCP 实验、完成源码对照、项目材料和面试口述。
+
+最终求职交付物应包括：现状与目标架构图、Workflow/Agent 选型 ADR、固定评测报告、轨迹
+展示、3—5 分钟演示、30 秒/90 秒/5 分钟口述稿，以及明确的 `implemented/enhanced/
+recommended/extension` 证据边界。

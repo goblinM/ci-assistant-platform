@@ -14,6 +14,7 @@ class CreateLogDiagnosisRequest(BaseModel):
     log_text: str = Field(min_length=1, max_length=1_000_000)
     use_rag: bool = True
     use_tools: bool = True
+    mode: Literal["workflow", "agent"] = "workflow"
 
 
 class CreateRunDiagnosisRequest(BaseModel):
@@ -25,6 +26,7 @@ class CreateRunDiagnosisRequest(BaseModel):
     project_id: UUID | None = None
     use_rag: bool = True
     use_tools: bool = True
+    mode: Literal["workflow", "agent"] = "workflow"
 
 
 class DiagnosisAccepted(BaseModel):

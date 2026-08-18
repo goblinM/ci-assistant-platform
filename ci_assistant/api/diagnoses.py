@@ -56,6 +56,7 @@ async def create_log_diagnosis(
             "log": preprocess_log(payload.log_text),
             "use_rag": payload.use_rag,
             "use_tools": payload.use_tools,
+            "mode": payload.mode,
         },
         error_code=None,
     )
@@ -78,8 +79,9 @@ async def create_run_diagnosis(
     session: AsyncSession = Depends(get_session),
 ):
     """根据已配置的 CI Run 创建异步诊断。
-    查询连接并按其所属租户鉴权，再通过统一 Provider 获取规范化 Run；连接不存在或未配置
-    时返回稳定错误。随后保存 ``queued`` 记录并派发其 ID。
+    查询连接并按其所属租户鉴权，再通过统一 Provider 获取规范化 Run；
+    连接不存在或未配置时返回稳定错误。
+    随后保存 ``queued`` 记录并派发其 ID。
     Job 与日志由 Celery Worker 按已保存的 Run 上下文获取。
     """
     connection = await CIConnectionRepository(session).get_by_external_id(
@@ -114,6 +116,7 @@ async def create_run_diagnosis(
             "run": run.model_dump(mode="json"),
             "use_rag": payload.use_rag,
             "use_tools": payload.use_tools,
+            "mode": payload.mode,
         },
         error_code=None,
     )

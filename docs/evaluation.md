@@ -14,6 +14,7 @@
 | 持久化测试 | Repository 事务、诊断状态和事件幂等 | `test_persistence.py`、`test_diagnosis_persistence.py` | 使用测试替身 |
 | 知识测试 | Chunk、Secret Mask、FAISS 原子发布和 ACL | `test_knowledge_processing.py`、`test_knowledge_index.py` | 否 |
 | 安全与降级 | 租户鉴权、Prompt 边界、RAG/模型失败 | `test_auth.py`、`test_security_controls.py`、`test_orchestrator.py` | 否 |
+| Agent P0 | 循环终止、预算、Tool Policy、脱敏 Trace 和模式门 | `test_agent_runtime.py`、`test_agent_evaluation.py` | 否 |
 | Compose E2E | API、Worker、PostgreSQL、Redis、FAISS 实际闭环 | `docs/mvp_acceptance_report.md` 中的验收步骤 | 是 |
 | 外部 Provider | 真实 GitLab/Jenkins/GitHub 权限、网络和兼容性 | 部署环境连接测试 | 是 |
 
@@ -80,6 +81,16 @@ pytest -q \
 
 评测样例不能作为知识答案直接导入同一索引，否则会造成数据泄漏。新增知识数据集时，应保留
 来源 URL、许可证状态、内容 hash 和数据集版本。
+
+## Agent P0 对照评测
+
+需要补充运行时证据的固定场景位于 `ci_assistant/agent_evaluation_cases.json`，覆盖 GitLab、
+Jenkins、GitHub Actions 共 10 个 Case。`evaluation/agent.py` 接收同一 Case 的 Workflow 与
+Agent 结果，统一计算 task success、error type accuracy、tool precision/recall、无效/重复/
+越权调用率、平均轮数、平均与 p95 延迟、fallback rate、输入/输出 Token 和成本。
+
+数据文件当前定义测试场景与期望工具，不伪造尚未运行的真实模型指标。扩大 Agent 流量前，
+必须使用固定模型版本执行两种模式并保存同批 Case 的真实结果；越权调用率必须为零。
 
 ## 离线排序评测
 

@@ -13,4 +13,6 @@ def test_metrics_endpoint_exposes_request_counters() -> None:
     assert response.status_code == 200
     assert "ci_assistant_http_requests_total" in response.text
     assert "ci_assistant_http_request_duration_seconds" in response.text
-
+    assert "ci_assistant_agent_rounds" in response.text
+    assert "ci_assistant_agent_tool_calls" in response.text
+    assert "ci_assistant_agent_estimated_input_tokens" in response.text

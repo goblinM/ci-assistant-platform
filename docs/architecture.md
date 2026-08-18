@@ -15,10 +15,12 @@ flowchart TD
 
     F --> G["GitLab / Jenkins / GitHub Provider"]
     F --> H["Log Preprocessor"]
+    F --> T["Mode Router: Workflow / bounded Agent"]
     H --> I["Tenant-scoped Hybrid Retriever"]
     I --> J["Versioned FAISS"]
     F --> K["Provider-aware Read-only Tools"]
     I --> L["Diagnosis Orchestrator"]
+    T --> L
     K --> L
     L --> M["OpenAI-compatible / Rule Gateway"]
     M --> N["Pydantic Diagnosis Result"]
@@ -81,6 +83,24 @@ GitLab Pipeline 处于 pending 时，Provider 会对排队作业标签和项目�
 Tool Result 在 Prompt 中均标记为不可信证据。单个 Tool 或 RAG 失败允许降级，最终输出必须
 通过 `DiagnosisResult` 校验。
 
+实验性 Agent P0 由请求 `mode=agent` 和平台 `agent.enabled=true` 双重启用，默认仍走现有
+Workflow。Agent 最多执行配置的轮次和只读工具次数，并受单工具超时、任务总超时、上下文
+字符和估算输入 Token 硬预算约束。模型只能选择运行时列出的工具，资源参数由 Worker 保存的
+Provider 上下文注入；候选筛选和执行前二次权限校验继续由 `ProviderToolExecutor` 强制。
+
+每轮只允许 `tool_request` 或 `final_answer`。重复调用、候选集外工具、空 Observation、模型
+Schema 错误、预算耗尽或超时都会产生稳定停止原因并回退 Workflow。Step Trace 只保存脱敏、
+裁剪后的 Observation 和参数指纹，不保存完整日志、完整知识正文或 Secret。
+
+Agent P1A 将 Run 与 Step 追加持久化，并在每个已完成步骤后用独立短事务提交检查点；Worker
+重试从已提交预算、工具指纹和脱敏受限 Observation 上下文继续，避免重复已完成的只读工具。
+只读 Replay API 只返回步骤摘要和内容 Hash，不返回内部续跑上下文。
+
+P1B 将工具策略扩展为 `effect`、`risk` 和 `allow|ask|deny`。当前执行器仍只接受
+`effect=read` 且 `policy=allow` 的工具；动作提案可被人工批准或拒绝，但平台没有提案执行器，
+所以 `approved` 仅是审计状态，不会评论、重跑 CI 或修改代码。自动 Memory、Skill、MCP 和
+Multi-Agent 仍不在本阶段范围内。
+
 ### 知识边界
 
 知识正文、版本、来源和 ACL 位于 PostgreSQL；Chunk 向量位于 FAISS。检索必须同时携带
@@ -118,7 +138,11 @@ tenants
 │   └── ci_events
 ├── diagnoses
 │   ├── analysis_traces
-│   └── diagnosis_feedback
+│   ├── diagnosis_feedback
+│   ├── agent_runs
+│   │   └── agent_steps
+│   └── action_proposals
+│       └── action_proposal_audits
 └── knowledge_documents
     ├── knowledge_chunks
     └── ingestion_jobs

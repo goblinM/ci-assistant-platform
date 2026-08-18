@@ -1,9 +1,11 @@
 from pathlib import Path
+from uuid import UUID
 
 import pytest
 from pydantic import ValidationError
 
 from ci_assistant.core.config import ConfigurationError, load_settings
+from ci_assistant.schemas.diagnosis import CreateLogDiagnosisRequest
 
 
 def test_load_settings_applies_all_precedence_layers(tmp_path: Path) -> None:
@@ -47,6 +49,39 @@ def test_nested_environment_variables_are_supported() -> None:
 
     assert settings.app.environment == "test"
     assert settings.knowledge.context_max_chars == 9000
+
+
+def test_agent_loop_is_disabled_by_default_and_has_bounded_configuration() -> None:
+    """验证 Agent 默认关闭，并支持通过嵌套环境变量设置安全硬预算。"""
+    defaults = load_settings(environ={})
+    configured = load_settings(
+        environ={
+            "CI_ASSISTANT__AGENT__ENABLED": "true",
+            "CI_ASSISTANT__AGENT__MAX_ROUNDS": "2",
+            "CI_ASSISTANT__AGENT__MAX_TOOL_CALLS": "3",
+            "CI_ASSISTANT__AGENT__MAX_ESTIMATED_INPUT_TOKENS": "6000",
+        }
+    )
+    assert defaults.agent.enabled is False
+    assert configured.agent.enabled is True
+    assert configured.agent.max_rounds == 2
+    assert configured.agent.max_tool_calls == 3
+    assert configured.agent.max_estimated_input_tokens == 6000
+
+
+def test_diagnosis_request_defaults_to_workflow_mode() -> None:
+    """验证新增模式字段保持旧请求兼容，并只接受 Workflow 或 Agent。"""
+    request = CreateLogDiagnosisRequest(
+        tenant_id=UUID("00000000-0000-0000-0000-000000000001"),
+        log_text="tests failed",
+    )
+    assert request.mode == "workflow"
+    with pytest.raises(ValidationError):
+        CreateLogDiagnosisRequest(
+            tenant_id=request.tenant_id,
+            log_text=request.log_text,
+            mode="autonomous",
+        )
 
 
 def test_unlimited_ocr_nested_configuration_is_supported() -> None:

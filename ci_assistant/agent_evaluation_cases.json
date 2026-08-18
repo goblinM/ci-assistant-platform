@@ -1,0 +1,13 @@
+[
+  {"id":"agent-01","provider":"gitlab","log":"pipeline failed after dependency install","expected_error_type":"dependency_missing","expected_tools":["get_run_context"]},
+  {"id":"agent-02","provider":"gitlab","log":"runner unavailable for tagged job","expected_error_type":"runner_unavailable","expected_tools":["get_job_context"]},
+  {"id":"agent-03","provider":"jenkins","log":"job failed without primary error","expected_error_type":"test_failed","expected_tools":["get_job_log"]},
+  {"id":"agent-04","provider":"github","log":"regression after recent commit","expected_error_type":"test_failed","expected_tools":["get_changes"]},
+  {"id":"agent-05","provider":"gitlab","log":"pipeline authentication failed","expected_error_type":"repo_auth_failed","expected_tools":["get_run_context"]},
+  {"id":"agent-06","provider":"jenkins","log":"agent timed out while running stage","expected_error_type":"timeout","expected_tools":["get_job_context"]},
+  {"id":"agent-07","provider":"github","log":"build failed and log summary is incomplete","expected_error_type":"docker_build_failed","expected_tools":["get_job_log"]},
+  {"id":"agent-08","provider":"gitlab","log":"pipeline failed after configuration change","expected_error_type":"env_config_error","expected_tools":["get_changes"]},
+  {"id":"agent-09","provider":"jenkins","log":"job exception with unknown root cause","expected_error_type":"unknown","expected_tools":["get_job_log"]},
+  {"id":"agent-10","provider":"github","log":"run failed after dependency update","expected_error_type":"dependency_conflict","expected_tools":["get_run_context","get_changes"]}
+]
+

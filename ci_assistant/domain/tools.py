@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -12,7 +12,7 @@ ToolCallable = Callable[..., Awaitable[dict[str, Any]]]
 
 
 class ToolSpec(BaseModel):
-    """定义只读 Provider Tool 的实现、能力要求和候选筛选元数据。"""
+    """定义 Provider Tool 的能力、效果、风险与执行授权策略。"""
 
     model_config = {"arbitrary_types_allowed": True}
 
@@ -24,3 +24,6 @@ class ToolSpec(BaseModel):
     trigger_keywords: frozenset[str] = Field(default_factory=frozenset)
     read_only: bool = True
     enabled: bool = True
+    effect: Literal["read", "write"] = "read"
+    risk: Literal["low", "medium", "high"] = "low"
+    policy: Literal["allow", "ask", "deny"] = "allow"

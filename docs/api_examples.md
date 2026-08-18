@@ -13,7 +13,8 @@ curl -X POST http://127.0.0.1:8080/api/v1/diagnoses/logs \
     "tenant_id": "00000000-0000-0000-0000-000000000001",
     "log_text": "ModuleNotFoundError: No module named requests",
     "use_rag": true,
-    "use_tools": false
+    "use_tools": false,
+    "mode": "workflow"
   }'
 
 curl http://127.0.0.1:8080/api/v1/diagnoses/DIAGNOSIS_ID \
@@ -21,6 +22,10 @@ curl http://127.0.0.1:8080/api/v1/diagnoses/DIAGNOSIS_ID \
 ```
 
 创建接口返回 `202`；查询结果包含状态、结构化诊断和真实检索引用。
+
+实验性只读 Agent 模式需要同时设置 `mode: "agent"` 和
+`CI_ASSISTANT__AGENT__ENABLED=true`。未启用平台开关时请求会安全使用 Workflow；Agent
+停止、超时或决策失败时也会回退 Workflow。该模式不提供评论、代码修改或 CI 重跑能力。
 
 ## CI Run 诊断
 

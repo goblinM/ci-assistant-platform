@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+- 增加 Agent P1A/P1B 只提案模式：可恢复 Run/Step 检查点、只读 Replay、细粒度 Tool Policy、
+  动作提案和审批审计；批准状态不会触发任何外部动作。
+- 增加默认关闭的只读 Agent P0：双重模式门、有界循环、服务端 Tool 参数注入、重复调用
+  阻断、超时与上下文预算、脱敏 Step Trace、Workflow 回退和固定对照评测契约。
 - 校准 Agent 面试材料与 `ci_assistant` 0.6.2 主平台实现边界，并新增 16 周 AI Agent
   学习跟进清单。
 - 收敛现行工程文档入口，移除已完成迁移阶段的重复分析、开发、跟进和产品化设计文档。

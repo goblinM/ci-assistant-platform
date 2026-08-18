@@ -16,6 +16,10 @@ def test_core_entities_are_registered_in_metadata() -> None:
         "diagnoses",
         "diagnosis_feedback",
         "analysis_traces",
+        "agent_runs",
+        "agent_steps",
+        "action_proposals",
+        "action_proposal_audits",
     }.issubset(Base.metadata.tables)
 
 
@@ -82,4 +86,27 @@ def test_feedback_migration_follows_webhook_delivery_revision() -> None:
     assert assignments == {
         "revision": "20260729_0004",
         "down_revision": "20260728_0003",
+    }
+
+
+def test_agent_p1_migration_follows_feedback_revision() -> None:
+    """验证 Agent P1 表通过新 revision 追加到既有迁移历史。"""
+    migration = (
+        Path(__file__).parents[1]
+        / "persistence"
+        / "migrations"
+        / "versions"
+        / "20260812_0005_agent_p1_proposals.py"
+    )
+    tree = ast.parse(migration.read_text(encoding="utf-8"))
+    assignments = {
+        node.targets[0].id: ast.literal_eval(node.value)
+        for node in tree.body
+        if isinstance(node, ast.Assign)
+        and isinstance(node.targets[0], ast.Name)
+        and node.targets[0].id in {"revision", "down_revision"}
+    }
+    assert assignments == {
+        "revision": "20260812_0005",
+        "down_revision": "20260729_0004",
     }

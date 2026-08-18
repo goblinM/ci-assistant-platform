@@ -7,7 +7,14 @@ from uuid import UUID
 
 from ci_assistant.core.config import load_settings
 from ci_assistant.core.errors import ErrorCode
-from ci_assistant.core.metrics import DIAGNOSIS_TASKS
+from ci_assistant.core.metrics import (
+    AGENT_INPUT_TOKENS,
+    AGENT_ROUNDS,
+    AGENT_RUNS,
+    AGENT_TOOL_CALLS,
+    DIAGNOSIS_TASKS,
+)
+from ci_assistant.diagnosis.agent_runtime import AgentRuntimeLimits, resolve_diagnosis_mode
 from ci_assistant.diagnosis.orchestrator import DiagnosisOrchestrator
 from ci_assistant.domain.ci import RunStatus
 from ci_assistant.knowledge.embeddings import build_embedder
@@ -16,10 +23,12 @@ from ci_assistant.knowledge.retrieval import HybridRetriever
 from ci_assistant.knowledge.reranking import build_reranker, rerank_with_fallback
 from ci_assistant.llm.gateway import OpenAIDiagnosisGateway, RuleBasedDiagnosisGateway
 from ci_assistant.persistence.database import Database
+from ci_assistant.persistence.agent import AgentRunRepository
 from ci_assistant.persistence.diagnoses import DiagnosisRepository
 from ci_assistant.persistence.entities import Diagnosis
 from ci_assistant.providers.manager import build_provider_manager
 from ci_assistant.schemas.result import Reference
+from ci_assistant.schemas.agent import AgentRunState
 from ci_assistant.tools import ProviderToolExecutor, default_tool_specs
 
 from .celery_app import app
@@ -73,6 +82,7 @@ async def _diagnose(diagnosis_id: str) -> dict[str, Any]:
     database = Database.from_config(settings.database)
     try:
         async with database.session() as session:
+            # 数据库中获取对应的任务
             repository = DiagnosisRepository(session)
             diagnosis = await repository.get(UUID(diagnosis_id))
             if diagnosis is None:
@@ -81,6 +91,7 @@ async def _diagnose(diagnosis_id: str) -> dict[str, Any]:
             if diagnosis.status == "succeeded":
                 return {"diagnosis_id": diagnosis_id, "status": "succeeded"}
             await repository.mark_running(diagnosis)
+
             context = diagnosis.result or {}
             provider = None
             log = context.get("log", "")
@@ -107,7 +118,7 @@ async def _diagnose(diagnosis_id: str) -> dict[str, Any]:
                     ).content
                     if fetched_log:
                         log = fetched_log
-
+            # 根绝provider 决定是用 确定性规则诊断 还是 Agent Reasoning-Action-Observation-AppendResult
             gateway = (
                 RuleBasedDiagnosisGateway()
                 if settings.ai.provider == "rule"
@@ -116,11 +127,14 @@ async def _diagnose(diagnosis_id: str) -> dict[str, Any]:
             tenant_id = str(diagnosis.tenant_id)
             project_id = str(diagnosis.project_id) if diagnosis.project_id else None
             provider_type = provider.provider_type if provider else context.get("provider")
+            # 构建默认 Hashing Embedder，并按配置启用持久化缓存
             embedder = build_embedder(settings.knowledge)
+            # 管理版本化 FAISS 索引，并通过 CURRENT 指针完成原子切换。
             store = FaissIndexStore(
                 settings.knowledge.storage_path / tenant_id,
                 settings.knowledge.embedding_dimension,
             )
+            # 混合检索：租户 ACL 过滤后的向量候选上融合语义、关键词和元数据
             hybrid = HybridRetriever(store)
             # reranker
             reranker = build_reranker(settings.knowledge.reranker)
@@ -142,6 +156,7 @@ async def _diagnose(diagnosis_id: str) -> dict[str, Any]:
                         else final_top_k
                     ),
                 )
+                # 异常时安全降级
                 matches = await rerank_with_fallback(
                     reranker,
                     query,
@@ -163,12 +178,44 @@ async def _diagnose(diagnosis_id: str) -> dict[str, Any]:
                     )
                     for item in matches
                 ]
-
+            # 诊断编排
             orchestrator = DiagnosisOrchestrator(
                 gateway,
                 tool_executor=ProviderToolExecutor(default_tool_specs()),
                 retriever=retrieve,
             )
+            # 决定是走workflow还是agent
+            effective_mode = resolve_diagnosis_mode(
+                str(context.get("mode", "workflow")),
+                agent_enabled=settings.agent.enabled,
+            )
+            agent_run_id = None
+            agent_initial_state = None
+            agent_resume_observations = None
+            agent_checkpoint_writer = None
+            if effective_mode == "agent":
+                async with database.session() as checkpoint_session:
+                    run_repository = AgentRunRepository(checkpoint_session)
+                    agent_run = await run_repository.get_or_create(
+                        diagnosis.id,
+                        diagnosis.tenant_id,
+                        "Diagnose the CI failure using trusted read-only evidence",
+                    )
+                    agent_run_id = agent_run.id
+                    agent_initial_state, agent_resume_observations = (
+                        await run_repository.load_state(agent_run)
+                    )
+
+                async def persist_checkpoint(checkpoint):
+                    """在独立短事务中提交步骤，使 Worker 异常后可从边界续跑。"""
+                    async with database.session() as checkpoint_session:
+                        run_repository = AgentRunRepository(checkpoint_session)
+                        persisted_run = await run_repository.get(agent_run_id)
+                        if persisted_run is None:
+                            raise RuntimeError("agent run disappeared during checkpoint")
+                        await run_repository.checkpoint(persisted_run, checkpoint)
+
+                agent_checkpoint_writer = persist_checkpoint
             output = await orchestrator.diagnose(
                 log,
                 provider=provider,
@@ -177,12 +224,48 @@ async def _diagnose(diagnosis_id: str) -> dict[str, Any]:
                 job_id=job_id,
                 use_rag=bool(context.get("use_rag", True)),
                 use_tools=bool(context.get("use_tools", True)),
+                mode=effective_mode,
+                agent_limits=AgentRuntimeLimits(
+                    max_rounds=settings.agent.max_rounds,
+                    max_tool_calls=settings.agent.max_tool_calls,
+                    tool_timeout_seconds=settings.agent.tool_timeout_seconds,
+                    context_max_chars=settings.agent.context_max_chars,
+                    total_prompt_max_chars=settings.agent.total_prompt_max_chars,
+                    max_estimated_input_tokens=(
+                        settings.agent.max_estimated_input_tokens
+                    ),
+                    observation_max_chars=settings.agent.observation_max_chars,
+                ),
+                agent_timeout_seconds=settings.agent.timeout_seconds,
+                agent_initial_state=agent_initial_state,
+                agent_resume_observations=agent_resume_observations,
+                agent_checkpoint_writer=agent_checkpoint_writer,
             )
+            if effective_mode == "agent":
+                agent_trace = output.trace.get("agent") or {}
+                async with database.session() as checkpoint_session:
+                    run_repository = AgentRunRepository(checkpoint_session)
+                    persisted_run = await run_repository.get(agent_run_id)
+                    if persisted_run is not None:
+                        final_state = AgentRunState.model_validate(agent_trace)
+                        await run_repository.finish(persisted_run, final_state)
+                AGENT_RUNS.labels(
+                    stop_reason=str(agent_trace.get("stop_reason") or "unknown")
+                ).inc()
+                AGENT_ROUNDS.observe(float(agent_trace.get("rounds") or 0))
+                AGENT_TOOL_CALLS.observe(float(agent_trace.get("tool_calls") or 0))
+                AGENT_INPUT_TOKENS.observe(
+                    float(agent_trace.get("estimated_input_tokens") or 0)
+                )
             await repository.mark_succeeded(
                 diagnosis,
                 result=output.result.model_dump(mode="json"),
                 trace=output.trace,
-                prompt_version="platform-v1",
+                prompt_version=(
+                    "platform-agent-p0-v1"
+                    if effective_mode == "agent"
+                    else "platform-v1"
+                ),
                 model_name=settings.ai.model,
             )
             DIAGNOSIS_TASKS.labels(status="succeeded").inc()

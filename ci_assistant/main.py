@@ -20,6 +20,7 @@ from ci_assistant.api.observability import MetricsMiddleware, router as metrics_
 from ci_assistant.api.health import ReadinessCheck, router as health_router
 from ci_assistant.api.middleware import RequestIDMiddleware
 from ci_assistant.api.auth import TenantAuthMiddleware
+from ci_assistant.api.agent import router as agent_router
 from ci_assistant.api.webhooks import router as webhooks_router
 from ci_assistant.core.config import UnlimitedOCRConfig, load_settings
 from ci_assistant.core.errors import PlatformError
@@ -103,6 +104,7 @@ def create_app(
     app.include_router(knowledge_router)
     app.include_router(metrics_router)
     app.include_router(webhooks_router)
+    app.include_router(agent_router)
     return app
 
 

@@ -29,6 +29,21 @@ CI_ASSISTANT__KNOWLEDGE__UNLIMITED_OCR__MODEL=Unlimited-OCR
 允许 API 到推理服务，推理服务不应访问 PostgreSQL、Redis 或公网。HTML/DOCX 原生解析不
 依赖 OCR 服务；OCR 未启用时 PDF 上传返回 `SERVICE_UNAVAILABLE`。
 
+## 实验性只读 Agent P0
+
+Agent 默认关闭。启用前应先固定模型版本并完成 Workflow/Agent 对照评测：
+
+```bash
+export CI_ASSISTANT__AGENT__ENABLED=true
+export CI_ASSISTANT__AGENT__MAX_ROUNDS=3
+export CI_ASSISTANT__AGENT__MAX_TOOL_CALLS=4
+export CI_ASSISTANT__AGENT__TIMEOUT_SECONDS=45
+```
+
+只有请求同时传递 `mode=agent` 才会进入 Agent Loop。生产环境应保留默认预算或设置更严格
+上限，并监控 `ci_assistant_agent_*` 指标、`stop_reason` 和 fallback rate。P0 没有写工具；
+不得把平台开关解释为评论、代码修改或 CI 重跑授权。
+
 ## Cross-Encoder/BGE Reranker
 
 Reranker 默认关闭，支持本地 SentenceTransformers 和独立 HTTP 服务两种后端。

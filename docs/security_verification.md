@@ -19,6 +19,9 @@
 - 诊断反馈按租户和诊断关联，评论写入前执行 Secret Mask；聚合接口不返回评论正文。
 - Embedding cache 不保存知识原文，仅保存不可逆文本 hash、模型参数和向量；缓存失败自动
   退回直接计算。
+- Agent P0 默认关闭且只允许现有只读 Provider Tool；模型不能提供租户 ID 或资源参数，
+  候选集外工具、重复调用和预算越界由运行时阻断。
+- Agent Step Trace 不保存 Observation 正文，只保存脱敏字段摘要、长度、截断状态和内容 Hash。
 
 仍需由部署方负责：Token 最小权限、网络出口策略、TLS 终止、镜像漏洞扫描、备份加密和
 API Key 定期轮换。

@@ -53,6 +53,7 @@ POST /api/v1/diagnoses/logs 或 /runs
 → diagnoses 写入 queued
 → Redis/Celery diagnosis 队列
 → Diagnosis Worker
+→ Mode Router（默认 Workflow；双重开关可选 bounded read-only Agent）
 → 日志预处理、Provider 只读上下文、RAG
 → 规则或 OpenAI-compatible Gateway
 → DiagnosisResult 校验
@@ -61,6 +62,9 @@ POST /api/v1/diagnoses/logs 或 /runs
 
 日志直传使用 `/logs`；已有 CI Run 使用 `/runs`，由 Provider 获取 Run、Job 和日志。
 结果通过 `GET /api/v1/diagnoses/{diagnosis_id}` 查询。
+
+Agent P0 只有请求 `mode=agent` 且 `agent.enabled=true` 时启用；否则仍走 Workflow。Agent
+停止或异常也回退 Workflow，不支持任何写工具。
 
 诊断完成后可向 `POST /api/v1/diagnoses/{diagnosis_id}/feedback` 提交脱敏反馈；反馈按诊断
 幂等更新并保持租户隔离，聚合结果由 `GET /api/v1/feedback/summary` 提供。

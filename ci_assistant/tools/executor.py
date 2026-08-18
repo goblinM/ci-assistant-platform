@@ -23,7 +23,12 @@ class ProviderToolExecutor:
         normalized = text.lower()
         candidates = []
         for spec in self._specs.values():
-            if not spec.enabled or not spec.read_only:
+            if (
+                not spec.enabled
+                or not spec.read_only
+                or spec.effect != "read"
+                or spec.policy != "allow"
+            ):
                 continue
             if allowed_tools is not None and spec.name not in allowed_tools:
                 continue
@@ -48,7 +53,12 @@ class ProviderToolExecutor:
             spec = self._specs[name]
         except KeyError as exc:
             raise ValueError(f"unknown tool: {name}") from exc
-        if not spec.enabled or not spec.read_only:
+        if (
+            not spec.enabled
+            or not spec.read_only
+            or spec.effect != "read"
+            or spec.policy != "allow"
+        ):
             raise PermissionError(f"tool is not enabled for read-only execution: {name}")
         if allowed_tools is not None and name not in allowed_tools:
             raise PermissionError(f"tool is not allowed by project policy: {name}")

@@ -39,6 +39,20 @@ class AIConfig(BaseModel):
     max_retries: int = Field(default=2, ge=0, le=10)
 
 
+class AgentConfig(BaseModel):
+    """定义实验性只读 Agent Loop 的开关、轮次、超时和上下文硬预算。"""
+
+    enabled: bool = False
+    max_rounds: int = Field(default=3, ge=1, le=8)
+    max_tool_calls: int = Field(default=4, ge=0, le=16)
+    timeout_seconds: float = Field(default=45, gt=0, le=300)
+    tool_timeout_seconds: float = Field(default=10, gt=0, le=120)
+    context_max_chars: int = Field(default=12_000, ge=2_000, le=100_000)
+    total_prompt_max_chars: int = Field(default=30_000, ge=2_000, le=300_000)
+    max_estimated_input_tokens: int = Field(default=7_500, ge=500, le=100_000)
+    observation_max_chars: int = Field(default=2_000, ge=200, le=20_000)
+
+
 class CIConnectionConfig(BaseModel):
     """定义单个 CI Provider 连接及其凭据环境变量名称。"""
 
@@ -196,6 +210,7 @@ class PlatformSettings(BaseModel):
 
     app: AppConfig = Field(default_factory=AppConfig)
     ai: AIConfig = Field(default_factory=AIConfig)
+    agent: AgentConfig = Field(default_factory=AgentConfig)
     ci: CIConfig = Field(default_factory=CIConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     redis: RedisConfig = Field(default_factory=RedisConfig)

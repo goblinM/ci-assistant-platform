@@ -52,7 +52,12 @@ include = ["ci_assistant*", "ci_analysis_demo*"]
 ci_analysis_demo = [
     "knowledge_docs/*.json",
 ]
-ci_assistant = ["py.typed", "evaluation_cases.json", "ranking_evaluation_cases.json"]
+ci_assistant = [
+    "py.typed",
+    "evaluation_cases.json",
+    "ranking_evaluation_cases.json",
+    "agent_evaluation_cases.json",
+]
 
 [tool.pytest.ini_options]
 addopts = "-ra"

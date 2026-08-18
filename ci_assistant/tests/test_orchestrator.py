@@ -2,6 +2,7 @@ import asyncio
 from unittest.mock import AsyncMock
 
 from ci_assistant.diagnosis.orchestrator import DiagnosisOrchestrator
+from ci_assistant.schemas.agent import AgentDecision
 from ci_assistant.schemas.result import DiagnosisResult
 
 
@@ -69,3 +70,30 @@ def test_orchestrator_degrades_when_retrieval_fails() -> None:
 
     assert output.result.references == []
     assert output.trace["rag_error"] == "OSError"
+
+
+def test_orchestrator_returns_agent_result_without_workflow_fallback() -> None:
+    """验证 Agent 完成时直接返回结构化结果并记录 completed Trace。"""
+    gateway = AsyncMock()
+    gateway.decide.return_value = AgentDecision(
+        action="final_answer",
+        final_result=DiagnosisResult(
+            error_type="test_failed",
+            summary="Agent diagnosis",
+            reason="Observed a failed assertion.",
+            suggestions=["Inspect the assertion."],
+            confidence="high",
+        ),
+    )
+    output = asyncio.run(
+        DiagnosisOrchestrator(gateway).diagnose(
+            "AssertionError: expected true",
+            mode="agent",
+            use_rag=False,
+            use_tools=False,
+        )
+    )
+    assert output.result.summary == "Agent diagnosis"
+    assert output.result.fallback_used is False
+    assert output.trace["agent"]["stop_reason"] == "completed"
+    gateway.diagnose.assert_not_awaited()

@@ -1,5 +1,15 @@
 # CI Assistant Platform ADOS 接入结果
 
+## 2026-08-12 Agent P1A/P1B
+
+- 追加 `agent_runs`、`agent_steps`、`action_proposals` 和
+  `action_proposal_audits` 迁移，不改写历史 revision。
+- Agent 步骤以独立短事务形成可恢复检查点，租户级 Replay 排除内部 Observation 上下文。
+- Tool Policy 增加 effect、risk 和 allow/ask/deny；执行器仍只接受只读 allow 工具。
+- Action Proposal 支持创建、批准、拒绝和审计，但没有动作执行器，批准不会产生外部副作用。
+- 验证：主包 120 项测试通过；编译、Alembic 离线升级、`git diff --check` 和 ADOS 14 项校验
+  通过。全仓测试仍因 9 个兼容/实验测试在收集期要求未配置 `MODEL_ID` 而无法执行。
+
 > 执行日期：2026-07-27
 > 接入范围：用户确认的 P0 项目  
 > 项目：`ci-assistant-platform`
@@ -450,3 +460,27 @@ Reranker 或模型服务。
   ACL 检索、结果落库和连接池释放边界。
 - 专项回归 `5 passed`；移除 Docstring 后 AST 与 `HEAD` 一致，源码编译和
   `git diff --check` 通过。
+
+## Agent P0 接入
+
+> 执行日期：2026-08-10
+
+### 实施内容
+
+- 新增默认关闭的只读 Agent 模式；请求 `mode=agent` 与平台配置开关必须同时满足，原
+  Workflow 保持默认和回退路径。
+- 新增 Agent Decision、Run、Step、Stop Reason，以及轮次、工具、单工具/总超时、上下文
+  字符和估算输入 Token 硬预算。
+- 模型只选择候选工具名，Provider 资源参数由服务端注入；重复、越权、空 Observation、
+  Schema 错误和预算退出均被运行时阻断并记录稳定原因。
+- Tool Observation 在进入下一轮和 Trace 前按结构化敏感键脱敏并裁剪；P0 不新增数据库、
+  写工具、MCP、Memory 或 Multi-Agent。
+- 新增 10 个三 Provider 固定证据场景，以及 Workflow/Agent 质量、安全、效率和成本指标。
+
+### 当前验证
+
+- `venv/bin/python -m compileall -q ci_assistant ci_analysis_demo`：通过。
+- `venv/bin/pytest -q ci_assistant/tests`：`115 passed, 1 warning`。
+- 兼容核心回归：`9 passed`。
+- 根目录完整 `pytest` 在收集阶段被 8 个既有 Claude Code 实验测试阻断：环境缺少其强制
+  `MODEL_ID`；未伪造模型配置，也未修改这些测试。

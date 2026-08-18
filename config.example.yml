@@ -14,6 +14,18 @@ ai:
   timeout_seconds: 30
   max_retries: 2
 
+# Experimental read-only Agent Loop. Workflow remains the default request mode.
+agent:
+  enabled: false
+  max_rounds: 3
+  max_tool_calls: 4
+  timeout_seconds: 45
+  tool_timeout_seconds: 10
+  context_max_chars: 12000
+  total_prompt_max_chars: 30000
+  max_estimated_input_tokens: 7500
+  observation_max_chars: 2000
+
 ci:
   connections:
     - id: corp-gitlab

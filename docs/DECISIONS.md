@@ -40,3 +40,24 @@
 - 决策：治理按 P0/P1/P2 渐进实施，不批量重构历史代码；只对实际触及的公共接口补充
   Docstring 和测试。
 - 原因：减少治理噪声，保持公开行为和兼容链路稳定。
+
+## ADR-007：Agent P0 采用旁路、有界、默认关闭的只读循环
+
+- 状态：已接受。
+- 决策：保留现有 Workflow 为默认路径，只在请求选择 `agent` 且平台显式启用时运行最多
+  3 轮的只读 Agent Loop；停止或异常时回退 Workflow。
+- 状态：P0 使用内存态 Run/Step，并将脱敏轨迹写入现有 `analysis_traces.trace_data`，不新增
+  数据库表。
+- 权限：模型只选工具名，资源参数由服务端注入；候选筛选、Capability 与只读校验不可绕过。
+- 原因：先用固定评测证明多轮决策收益，同时限制成本、越权、循环和兼容风险。
+- 后续：持久化恢复、审批、Memory、Skill、MCP 和 Multi-Agent 必须分别进入 P1/P2 评审。
+
+## ADR-008：Agent P1A/P1B 采用可恢复检查点与只提案审批
+
+- 状态：已接受。
+- 决策：Agent Run/Step 使用追加式迁移持久化；每个完成步骤在独立短事务提交，Worker 重试
+  从最后检查点恢复预算、调用指纹和脱敏受限上下文。
+- 回放：租户级 Replay API 不返回内部 Observation 正文，只返回步骤、摘要和 Hash。
+- 权限：Tool Policy 使用 `effect`、`risk`、`allow|ask|deny`；只有只读且 allow 的工具可执行。
+- 提案：人工批准和拒绝形成不可变审计事件，但 P1 不提供动作执行器，批准不产生外部副作用。
+- 延后：自动 Memory、Skill、MCP、写工具和 Multi-Agent 继续单独评审。

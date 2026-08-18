@@ -156,6 +156,87 @@ class AnalysisTrace(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     trace_data: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
 
 
+class AgentRun(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """保存单次诊断 Agent 的可恢复预算状态和稳定终态。"""
+
+    __tablename__ = "agent_runs"
+    __table_args__ = (UniqueConstraint("diagnosis_id"),)
+
+    diagnosis_id: Mapped[UUID] = mapped_column(
+        ForeignKey("diagnoses.id", ondelete="CASCADE")
+    )
+    tenant_id: Mapped[UUID] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"))
+    goal: Mapped[str] = mapped_column(String(500))
+    status: Mapped[str] = mapped_column(String(30), default="running")
+    rounds: Mapped[int] = mapped_column(Integer, default=0)
+    tool_calls: Mapped[int] = mapped_column(Integer, default=0)
+    prompt_chars: Mapped[int] = mapped_column(Integer, default=0)
+    estimated_input_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    model_input_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    model_output_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    stop_reason: Mapped[str | None] = mapped_column(String(50))
+
+
+class AgentStepRecord(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """保存 Agent 步骤摘要和内部续跑所需的受限脱敏上下文。"""
+
+    __tablename__ = "agent_steps"
+    __table_args__ = (
+        UniqueConstraint("agent_run_id", "ordinal"),
+        UniqueConstraint("agent_run_id", "idempotency_key"),
+    )
+
+    agent_run_id: Mapped[UUID] = mapped_column(
+        ForeignKey("agent_runs.id", ondelete="CASCADE")
+    )
+    tenant_id: Mapped[UUID] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"))
+    ordinal: Mapped[int] = mapped_column(Integer)
+    idempotency_key: Mapped[str] = mapped_column(String(100))
+    round: Mapped[int] = mapped_column(Integer)
+    action: Mapped[str] = mapped_column(String(30))
+    tool_name: Mapped[str | None] = mapped_column(String(100))
+    tool_fingerprint: Mapped[str | None] = mapped_column(String(64))
+    observation_summary: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    observation_context: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    error_code: Mapped[str | None] = mapped_column(String(100))
+
+
+class ActionProposal(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """保存待人工决策且永不由 P1 自动执行的外部动作提案。"""
+
+    __tablename__ = "action_proposals"
+    __table_args__ = (Index("ix_action_proposals_tenant_status", "tenant_id", "status"),)
+
+    diagnosis_id: Mapped[UUID] = mapped_column(
+        ForeignKey("diagnoses.id", ondelete="CASCADE")
+    )
+    agent_run_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("agent_runs.id", ondelete="SET NULL")
+    )
+    tenant_id: Mapped[UUID] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"))
+    action_type: Mapped[str] = mapped_column(String(100))
+    target: Mapped[str] = mapped_column(String(500))
+    arguments_hash: Mapped[str] = mapped_column(String(64))
+    arguments_summary: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    risk: Mapped[str] = mapped_column(String(20))
+    status: Mapped[str] = mapped_column(String(30), default="pending")
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class ActionProposalAudit(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """不可变记录提案的人工批准或拒绝事件。"""
+
+    __tablename__ = "action_proposal_audits"
+
+    proposal_id: Mapped[UUID] = mapped_column(
+        ForeignKey("action_proposals.id", ondelete="CASCADE")
+    )
+    tenant_id: Mapped[UUID] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"))
+    decision: Mapped[str] = mapped_column(String(20))
+    reason: Mapped[str | None] = mapped_column(String(1000))
+    request_id: Mapped[str] = mapped_column(String(100))
+
+
 class KnowledgeDocument(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     """保存租户知识正文、来源、作用域、版本和生命周期状态。"""
 

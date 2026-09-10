@@ -2,15 +2,26 @@ from __future__ import annotations
 
 import hashlib
 import json
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ci_assistant.schemas.agent import AgentCheckpoint, AgentRunState, AgentStep
 
 from .entities import ActionProposal, ActionProposalAudit, AgentRun, AgentStepRecord
+
+
+@dataclass(frozen=True)
+class ProposalDecisionResult:
+    """封装提案原子决策结果及可选审计事件。"""
+
+    proposal: ActionProposal
+    audit: ActionProposalAudit | None
+    conflict: str | None = None
 
 
 class AgentRunRepository:
@@ -24,35 +35,77 @@ class AgentRunRepository:
         run = (await self.session.execute(select(AgentRun).where(AgentRun.diagnosis_id == diagnosis_id))).scalar_one_or_none()
         if run is None:
             run = AgentRun(diagnosis_id=diagnosis_id, tenant_id=tenant_id, goal=goal)
-            self.session.add(run)
-            await self.session.flush()
+            try:
+                async with self.session.begin_nested():
+                    self.session.add(run)
+                    await self.session.flush()
+            except IntegrityError:
+                run = (
+                    await self.session.execute(
+                        select(AgentRun).where(AgentRun.diagnosis_id == diagnosis_id)
+                    )
+                ).scalar_one()
         return run
 
     async def get(self, run_id: UUID) -> AgentRun | None:
         """按主键读取 Agent Run。"""
         return await self.session.get(AgentRun, run_id)
 
-    async def load_state(self, run: AgentRun) -> tuple[AgentRunState, list[dict]]:
+    async def load_state(
+        self, run: AgentRun
+    ) -> tuple[AgentRunState, list[dict], dict | None]:
         """从已提交步骤重建预算、指纹和脱敏 Observation 上下文。"""
         records = (await self.session.execute(select(AgentStepRecord).where(AgentStepRecord.agent_run_id == run.id).order_by(AgentStepRecord.ordinal))).scalars().all()
-        steps = [AgentStep(round=item.round, action=item.action, tool_name=item.tool_name, tool_fingerprint=item.tool_fingerprint, observation=item.observation_summary, error_code=item.error_code) for item in records]
+        steps = [AgentStep(round=item.round, action=item.action, tool_name=item.tool_name, evidence_gap=item.evidence_gap, tool_fingerprint=item.tool_fingerprint, observation=item.observation_summary, error_code=item.error_code) for item in records]
         state = AgentRunState(goal=run.goal, status="running", rounds=run.rounds, tool_calls=run.tool_calls, prompt_chars=run.prompt_chars, estimated_input_tokens=run.estimated_input_tokens, model_input_tokens=run.model_input_tokens, model_output_tokens=run.model_output_tokens, steps=steps)
         observations = [item.observation_context for item in records if item.observation_context]
-        return state, observations
+        return state, observations, run.result_snapshot
 
     async def checkpoint(self, run: AgentRun, checkpoint: AgentCheckpoint) -> None:
         """按步骤序号幂等保存检查点并同步运行预算。"""
         ordinal = len(checkpoint.state.steps)
         key = hashlib.sha256(f"{run.id}:{ordinal}:{checkpoint.step.tool_fingerprint or checkpoint.step.action}".encode()).hexdigest()
-        exists = (await self.session.execute(select(AgentStepRecord.id).where(AgentStepRecord.agent_run_id == run.id, AgentStepRecord.idempotency_key == key))).scalar_one_or_none()
-        if exists is None:
-            self.session.add(AgentStepRecord(agent_run_id=run.id, tenant_id=run.tenant_id, ordinal=ordinal, idempotency_key=key, round=checkpoint.step.round, action=checkpoint.step.action, tool_name=checkpoint.step.tool_name, tool_fingerprint=checkpoint.step.tool_fingerprint, observation_summary=checkpoint.step.observation, observation_context=checkpoint.observation_context, error_code=checkpoint.step.error_code))
+        existing = (
+            await self.session.execute(
+                select(AgentStepRecord).where(
+                    AgentStepRecord.agent_run_id == run.id,
+                    AgentStepRecord.ordinal == ordinal,
+                )
+            )
+        ).scalar_one_or_none()
+        if existing is None:
+            record = AgentStepRecord(agent_run_id=run.id, tenant_id=run.tenant_id, ordinal=ordinal, idempotency_key=key, round=checkpoint.step.round, action=checkpoint.step.action, tool_name=checkpoint.step.tool_name, evidence_gap=checkpoint.step.evidence_gap, tool_fingerprint=checkpoint.step.tool_fingerprint, observation_summary=checkpoint.step.observation, observation_context=checkpoint.observation_context, error_code=checkpoint.step.error_code)
+            try:
+                async with self.session.begin_nested():
+                    self.session.add(record)
+                    await self.session.flush()
+            except IntegrityError:
+                existing = (
+                    await self.session.execute(
+                        select(AgentStepRecord).where(
+                            AgentStepRecord.agent_run_id == run.id,
+                            AgentStepRecord.ordinal == ordinal,
+                        )
+                    )
+                ).scalar_one()
+        if existing is not None and (
+            existing.idempotency_key != key
+            or existing.action != checkpoint.step.action
+            or existing.evidence_gap != checkpoint.step.evidence_gap
+            or existing.tool_fingerprint != checkpoint.step.tool_fingerprint
+        ):
+            raise RuntimeError("agent checkpoint conflicts with persisted step")
+        if checkpoint.result_snapshot is not None:
+            run.result_snapshot = checkpoint.result_snapshot.model_dump(mode="json")
+            run.phase = "answer_generated"
         self._copy_state(run, checkpoint.state)
         await self.session.flush()
 
     async def finish(self, run: AgentRun, state: AgentRunState) -> None:
         """同步 Agent Run 的最终状态和停止原因。"""
         self._copy_state(run, state)
+        if run.result_snapshot is None:
+            run.phase = "terminal"
         await self.session.flush()
 
     @staticmethod
@@ -86,15 +139,40 @@ class ActionProposalRepository:
         """按主键查询动作提案。"""
         return await self.session.get(ActionProposal, proposal_id)
 
-    async def decide(self, proposal: ActionProposal, *, decision: str, reason: str | None, request_id: str) -> ActionProposalAudit:
-        """记录审批结论；即使批准也只改变审计状态，不执行动作。"""
+    async def decide(
+        self,
+        proposal_id: UUID,
+        *,
+        decision: str,
+        reason: str | None,
+        request_id: str,
+    ) -> ProposalDecisionResult | None:
+        """锁定提案后原子记录一次决策；批准仍不会执行动作。"""
+        proposal = (
+            await self.session.execute(
+                select(ActionProposal)
+                .where(ActionProposal.id == proposal_id)
+                .with_for_update()
+            )
+        ).scalar_one_or_none()
+        if proposal is None:
+            return None
         if proposal.status != "pending":
-            raise ValueError("proposal is no longer pending")
+            return ProposalDecisionResult(
+                proposal=proposal,
+                audit=None,
+                conflict="proposal is no longer pending",
+            )
         if proposal.expires_at and proposal.expires_at <= datetime.now(timezone.utc):
             proposal.status = "expired"
-            raise ValueError("proposal has expired")
+            await self.session.flush()
+            return ProposalDecisionResult(
+                proposal=proposal,
+                audit=None,
+                conflict="proposal has expired",
+            )
         proposal.status = decision
         audit = ActionProposalAudit(proposal_id=proposal.id, tenant_id=proposal.tenant_id, decision=decision, reason=reason, request_id=request_id)
         self.session.add(audit)
         await self.session.flush()
-        return audit
+        return ProposalDecisionResult(proposal=proposal, audit=audit)

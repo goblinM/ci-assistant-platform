@@ -134,12 +134,18 @@ Structured Diagnosis Result
 
 ### P0.3 上下文管理
 
+实施状态：已完成分区预算。最新 Observation、日志、知识和旧 Observation 分配独立额度，
+最新 Observation 不再因整体前向截断而丢失；每次工具请求必须声明要解决的证据缺口。
+
 - 分开管理 system policy、goal、日志证据、RAG、Tool Observation 和历史步骤。
 - 为各分区配置字符/Token 预算；优先保留最近错误、真实引用和最新 Observation。
 - Tool Result 先结构化裁剪、脱敏和标注来源，再进入模型上下文。
 - 旧步骤只保留决策与 Observation 摘要，不重复拼接完整日志。
 
 ### P0.4 评测与可观测性
+
+实施状态：已提供真实 Runner Harness，可对同一固定用例逐一执行 Workflow/Agent，并把真实
+结果交给统一指标计算器；Harness 本身不伪造模型或 Provider 结果。
 
 - 在固定 Case 中同时运行 Workflow 和 Agent，禁止只展示 Agent 最佳样例。
 - 新增指标：task success、error type accuracy、tool precision/recall、无效工具率、重复调用率、
@@ -159,7 +165,8 @@ Structured Diagnosis Result
 ### P1.1 持久化与恢复
 
 实施状态：P1A 已完成。Run/Step 使用追加式迁移；步骤以独立短事务形成恢复点，Replay
-不返回内部续跑 Observation 上下文。
+不返回内部续跑 Observation 上下文。2026-08-24 进一步增加任务行锁认领、并发幂等
+Savepoint、超时状态保留和最终答案恢复快照，使重试不必重新调用模型。
 
 - 通过新增 Alembic revision 引入 `agent_runs`、`agent_steps` 或等价持久化模型。
 - 为每步保存幂等键、输入摘要、决策、工具状态、预算、checkpoint 和 stop reason。
@@ -169,7 +176,8 @@ Structured Diagnosis Result
 ### P1.2 权限与 Human-in-the-loop
 
 实施状态：P1B 只提案模式已完成。动作可以创建、批准、拒绝和审计，但没有执行器；即使
-状态为 `approved` 也不会产生外部副作用。
+状态为 `approved` 也不会产生外部副作用。审批已在 Proposal 行锁内限制为单次决策，过期
+状态通过可提交事务持久化。
 
 - 将 `read_only: bool` 演进为 `effect=read|write`、`risk=low|medium|high`、作用域和
   `allow|ask|deny` Policy。
@@ -193,6 +201,9 @@ Structured Diagnosis Result
 - MCP 返回内容与原生 Tool 一样经过裁剪、脱敏和不可信标记。
 
 ## 7. P2：有指标依据的增强能力
+
+低置信度或稳定状态证据冲突时的单次、受总轮数约束自检已前置落地；它不启用独立 Critic
+模型，也不会突破原有轮数、Token、超时或只读工具边界。
 
 - 仅对低置信度、证据冲突或高风险提案启用 Critic/Reflection，避免每次诊断固定增加一轮。
 - 按任务复杂度路由模型：规则/小模型处理分类和摘要，强模型处理复杂规划与冲突消解。

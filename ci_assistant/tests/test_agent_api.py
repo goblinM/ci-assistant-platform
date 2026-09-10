@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 
 from ci_assistant.api.dependencies import get_session
 from ci_assistant.main import create_app
+from ci_assistant.persistence.agent import ProposalDecisionResult
 from ci_assistant.persistence.entities import ActionProposal, Diagnosis
 
 
@@ -26,10 +27,12 @@ def test_proposal_approval_only_updates_audit_state(monkeypatch) -> None:
         """返回固定待审批提案。"""
         return proposal
 
-    async def fake_decide(repository, item, **values):
+    async def fake_decide(repository, proposal_id, **values):
         """模拟仅更新状态和写审计事件。"""
         del repository, values
-        item.status = "approved"
+        assert proposal_id == proposal.id
+        proposal.status = "approved"
+        return ProposalDecisionResult(proposal=proposal, audit=None)
 
     monkeypatch.setattr("ci_assistant.persistence.agent.ActionProposalRepository.get", fake_get)
     monkeypatch.setattr("ci_assistant.persistence.agent.ActionProposalRepository.decide", fake_decide)
@@ -41,6 +44,47 @@ def test_proposal_approval_only_updates_audit_state(monkeypatch) -> None:
     )
     assert response.status_code == 200
     assert response.json()["data"]["status"] == "approved"
+
+
+def test_expired_proposal_returns_conflict_with_persistable_state(monkeypatch) -> None:
+    """验证过期提案通过正常响应返回 409，使 expired 状态可随事务提交。"""
+    tenant_id = uuid4()
+    proposal = ActionProposal(
+        id=uuid4(), diagnosis_id=uuid4(), agent_run_id=None, tenant_id=tenant_id,
+        action_type="ci_rerun", target="pipeline/7", arguments_hash="a" * 64,
+        arguments_summary={}, risk="high", status="expired", expires_at=None,
+        created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc),
+    )
+
+    async def fake_session():
+        """提供无需数据库的 API 依赖替身。"""
+        yield object()
+
+    async def fake_get(repository, identifier):
+        """返回固定过期提案。"""
+        del repository, identifier
+        return proposal
+
+    async def fake_decide(repository, proposal_id, **values):
+        """返回仓储层原子过期结论。"""
+        del repository, proposal_id, values
+        return ProposalDecisionResult(
+            proposal=proposal,
+            audit=None,
+            conflict="proposal has expired",
+        )
+
+    monkeypatch.setattr("ci_assistant.persistence.agent.ActionProposalRepository.get", fake_get)
+    monkeypatch.setattr("ci_assistant.persistence.agent.ActionProposalRepository.decide", fake_decide)
+    app = create_app()
+    app.dependency_overrides[get_session] = fake_session
+    response = TestClient(app).post(
+        f"/api/v1/action-proposals/{proposal.id}/decision",
+        json={"decision": "approved"},
+    )
+    assert response.status_code == 409
+    assert response.json()["data"]["status"] == "expired"
+    assert response.json()["error"]["message"] == "proposal has expired"
 
 
 def test_create_proposal_masks_argument_summary(monkeypatch) -> None:

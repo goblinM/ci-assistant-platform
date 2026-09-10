@@ -12,6 +12,7 @@ from ci_assistant.core.metrics import (
     AGENT_ROUNDS,
     AGENT_RUNS,
     AGENT_TOOL_CALLS,
+    observe_agent_steps,
     DIAGNOSIS_TASKS,
 )
 from ci_assistant.diagnosis.agent_runtime import AgentRuntimeLimits, resolve_diagnosis_mode
@@ -25,9 +26,9 @@ from ci_assistant.llm.gateway import OpenAIDiagnosisGateway, RuleBasedDiagnosisG
 from ci_assistant.persistence.database import Database
 from ci_assistant.persistence.agent import AgentRunRepository
 from ci_assistant.persistence.diagnoses import DiagnosisRepository
-from ci_assistant.persistence.entities import Diagnosis
+from ci_assistant.persistence.entities import AgentRun, Diagnosis
 from ci_assistant.providers.manager import build_provider_manager
-from ci_assistant.schemas.result import Reference
+from ci_assistant.schemas.result import DiagnosisResult, Reference
 from ci_assistant.schemas.agent import AgentRunState
 from ci_assistant.tools import ProviderToolExecutor, default_tool_specs
 
@@ -84,10 +85,13 @@ async def _diagnose(diagnosis_id: str) -> dict[str, Any]:
         async with database.session() as session:
             # 数据库中获取对应的任务
             repository = DiagnosisRepository(session)
-            diagnosis = await repository.get(UUID(diagnosis_id))
+            identifier = UUID(diagnosis_id)
+            diagnosis = await repository.get_for_processing(identifier)
             if diagnosis is None:
-                DIAGNOSIS_TASKS.labels(status="not_found").inc()
-                return {"diagnosis_id": diagnosis_id, "status": "not_found"}
+                existing = await repository.get(identifier)
+                status = "already_processing" if existing is not None else "not_found"
+                DIAGNOSIS_TASKS.labels(status=status).inc()
+                return {"diagnosis_id": diagnosis_id, "status": status}
             if diagnosis.status == "succeeded":
                 return {"diagnosis_id": diagnosis_id, "status": "succeeded"}
             await repository.mark_running(diagnosis)
@@ -192,6 +196,7 @@ async def _diagnose(diagnosis_id: str) -> dict[str, Any]:
             agent_run_id = None
             agent_initial_state = None
             agent_resume_observations = None
+            agent_recovered_result = None
             agent_checkpoint_writer = None
             if effective_mode == "agent":
                 async with database.session() as checkpoint_session:
@@ -202,9 +207,17 @@ async def _diagnose(diagnosis_id: str) -> dict[str, Any]:
                         "Diagnose the CI failure using trusted read-only evidence",
                     )
                     agent_run_id = agent_run.id
-                    agent_initial_state, agent_resume_observations = (
+                    (
+                        agent_initial_state,
+                        agent_resume_observations,
+                        recovered_result_snapshot,
+                    ) = (
                         await run_repository.load_state(agent_run)
                     )
+                    if recovered_result_snapshot is not None:
+                        agent_recovered_result = DiagnosisResult.model_validate(
+                            recovered_result_snapshot
+                        )
 
                 async def persist_checkpoint(checkpoint):
                     """在独立短事务中提交步骤，使 Worker 异常后可从边界续跑。"""
@@ -240,14 +253,15 @@ async def _diagnose(diagnosis_id: str) -> dict[str, Any]:
                 agent_initial_state=agent_initial_state,
                 agent_resume_observations=agent_resume_observations,
                 agent_checkpoint_writer=agent_checkpoint_writer,
+                agent_recovered_result=agent_recovered_result,
             )
             if effective_mode == "agent":
                 agent_trace = output.trace.get("agent") or {}
+                final_state = AgentRunState.model_validate(agent_trace)
                 async with database.session() as checkpoint_session:
                     run_repository = AgentRunRepository(checkpoint_session)
                     persisted_run = await run_repository.get(agent_run_id)
                     if persisted_run is not None:
-                        final_state = AgentRunState.model_validate(agent_trace)
                         await run_repository.finish(persisted_run, final_state)
                 AGENT_RUNS.labels(
                     stop_reason=str(agent_trace.get("stop_reason") or "unknown")
@@ -257,6 +271,7 @@ async def _diagnose(diagnosis_id: str) -> dict[str, Any]:
                 AGENT_INPUT_TOKENS.observe(
                     float(agent_trace.get("estimated_input_tokens") or 0)
                 )
+                observe_agent_steps(final_state.steps)
             await repository.mark_succeeded(
                 diagnosis,
                 result=output.result.model_dump(mode="json"),
@@ -268,6 +283,11 @@ async def _diagnose(diagnosis_id: str) -> dict[str, Any]:
                 ),
                 model_name=settings.ai.model,
             )
+            if agent_run_id is not None:
+                committed_run = await session.get(AgentRun, agent_run_id)
+                if committed_run is not None:
+                    committed_run.phase = "diagnosis_committed"
+                    await session.flush()
             DIAGNOSIS_TASKS.labels(status="succeeded").inc()
             return {"diagnosis_id": diagnosis_id, "status": "succeeded"}
     except Exception:

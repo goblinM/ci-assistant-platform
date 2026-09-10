@@ -32,7 +32,8 @@ Redis/Celery、版本化 FAISS 知识索引以及 OpenAI-compatible 或本地规
 - 可配置 Cross-Encoder/BGE Reranker，异常时自动降级到 Hybrid 排序
 - Hybrid/Reranker 离线排序评测、诊断反馈闭环和本地 embedding cache
 - tenant/project/provider ACL 混合检索与真实 references
-- 默认关闭的只读 Agent 模式，具备轮次、工具、超时、上下文和估算 Token 硬预算
+- 默认关闭的只读 Agent 模式，具备分区上下文、证据缺口规划、按需单次自检，以及轮次、
+  工具、超时和估算 Token 硬预算
 - Bearer API Key 租户隔离、Secret Mask、结构化校验、降级和 Prometheus 指标
 - 18 Case GitLab/Jenkins 固定评测集及 Docker Compose 五服务部署
 
@@ -257,6 +258,7 @@ CI Token、TLS、网络出口策略、备份、镜像扫描和 API Key 轮换。
 - [Agent 化优化路线图](docs/agent_optimization_plan.md)
 - [工程决策](docs/DECISIONS.md)
 - [安装与运维](docs/platform_operations.md)
+- [本地 Docker 部署与升级](docs/DEPLOYMENT.md)
 - [API 示例](docs/api_examples.md)
 - [评测说明](docs/evaluation.md)
 - [MVP 范围基线](docs/ci_assistant_platform_mvp.md)

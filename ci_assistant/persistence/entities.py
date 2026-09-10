@@ -175,6 +175,8 @@ class AgentRun(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     model_input_tokens: Mapped[int] = mapped_column(Integer, default=0)
     model_output_tokens: Mapped[int] = mapped_column(Integer, default=0)
     stop_reason: Mapped[str | None] = mapped_column(String(50))
+    phase: Mapped[str] = mapped_column(String(30), default="running")
+    result_snapshot: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
 
 class AgentStepRecord(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -195,6 +197,7 @@ class AgentStepRecord(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     round: Mapped[int] = mapped_column(Integer)
     action: Mapped[str] = mapped_column(String(30))
     tool_name: Mapped[str | None] = mapped_column(String(100))
+    evidence_gap: Mapped[str | None] = mapped_column(String(500))
     tool_fingerprint: Mapped[str | None] = mapped_column(String(64))
     observation_summary: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     observation_context: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
@@ -227,6 +230,7 @@ class ActionProposalAudit(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     """不可变记录提案的人工批准或拒绝事件。"""
 
     __tablename__ = "action_proposal_audits"
+    __table_args__ = (UniqueConstraint("proposal_id"),)
 
     proposal_id: Mapped[UUID] = mapped_column(
         ForeignKey("action_proposals.id", ondelete="CASCADE")

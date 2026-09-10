@@ -36,6 +36,7 @@ OpenAI-compatible 网关生成结构化诊断。
 | 知识任务 | `ci_assistant.workers.ingestion_tasks` |
 | 数据库迁移 | `alembic.ini`、`ci_assistant/persistence/migrations/` |
 | 容器编排 | `docker-compose.yml` |
+| 本地 Docker 部署与升级 | `docs/DEPLOYMENT.md` |
 | API 文档 | `http://127.0.0.1:8080/docs` |
 | 就绪检查 | `GET /health/ready` |
 

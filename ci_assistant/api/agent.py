@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,7 +27,7 @@ async def replay_agent_run(run_id: UUID, request: Request, session: AsyncSession
         raise PlatformError(ErrorCode.RESOURCE_NOT_FOUND, "Agent run not found", status_code=404)
     enforce_tenant(request, run.tenant_id)
     steps = (await session.execute(select(AgentStepRecord).where(AgentStepRecord.agent_run_id == run.id).order_by(AgentStepRecord.ordinal))).scalars().all()
-    return {"request_id": request.state.request_id, "data": {"id": run.id, "diagnosis_id": run.diagnosis_id, "status": run.status, "goal": run.goal, "rounds": run.rounds, "tool_calls": run.tool_calls, "stop_reason": run.stop_reason, "steps": [{"ordinal": item.ordinal, "round": item.round, "action": item.action, "tool_name": item.tool_name, "tool_fingerprint": item.tool_fingerprint, "observation": item.observation_summary, "error_code": item.error_code} for item in steps]}, "error": None}
+    return {"request_id": request.state.request_id, "data": {"id": run.id, "diagnosis_id": run.diagnosis_id, "status": run.status, "goal": run.goal, "rounds": run.rounds, "tool_calls": run.tool_calls, "stop_reason": run.stop_reason, "steps": [{"ordinal": item.ordinal, "round": item.round, "action": item.action, "tool_name": item.tool_name, "evidence_gap": item.evidence_gap, "tool_fingerprint": item.tool_fingerprint, "observation": item.observation_summary, "error_code": item.error_code} for item in steps]}, "error": None}
 
 
 @router.post("/api/v1/action-proposals")
@@ -43,15 +43,44 @@ async def create_action_proposal(payload: ActionProposalCreate, request: Request
 
 
 @router.post("/api/v1/action-proposals/{proposal_id}/decision")
-async def decide_action_proposal(proposal_id: UUID, payload: ActionProposalDecision, request: Request, session: AsyncSession = Depends(get_session)):
+async def decide_action_proposal(
+    proposal_id: UUID,
+    payload: ActionProposalDecision,
+    request: Request,
+    response: Response,
+    session: AsyncSession = Depends(get_session),
+):
     """审计批准或拒绝提案；批准仅记账且不会触发外部动作。"""
     repository = ActionProposalRepository(session)
     proposal = await repository.get(proposal_id)
     if proposal is None:
         raise PlatformError(ErrorCode.RESOURCE_NOT_FOUND, "Action proposal not found", status_code=404)
     enforce_tenant(request, proposal.tenant_id)
-    try:
-        await repository.decide(proposal, decision=payload.decision, reason=mask_secrets(payload.reason) if payload.reason else None, request_id=request.state.request_id)
-    except ValueError as exc:
-        raise PlatformError(ErrorCode.PERMISSION_DENIED, str(exc), status_code=409) from exc
-    return {"request_id": request.state.request_id, "data": ActionProposalView.model_validate(proposal), "error": None}
+    outcome = await repository.decide(
+        proposal.id,
+        decision=payload.decision,
+        reason=mask_secrets(payload.reason) if payload.reason else None,
+        request_id=request.state.request_id,
+    )
+    if outcome is None:
+        raise PlatformError(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            "Action proposal not found",
+            status_code=404,
+        )
+    if outcome.conflict is not None:
+        response.status_code = 409
+        return {
+            "request_id": request.state.request_id,
+            "data": ActionProposalView.model_validate(outcome.proposal),
+            "error": {
+                "code": ErrorCode.PERMISSION_DENIED.value,
+                "message": outcome.conflict,
+                "details": None,
+            },
+        }
+    return {
+        "request_id": request.state.request_id,
+        "data": ActionProposalView.model_validate(outcome.proposal),
+        "error": None,
+    }

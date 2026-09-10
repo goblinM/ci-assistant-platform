@@ -23,6 +23,15 @@ class DiagnosisRepository(Repository[Diagnosis]):
         )
         return result.scalar_one_or_none()
 
+    async def get_for_processing(self, diagnosis_id: UUID) -> Diagnosis | None:
+        """使用跳过已锁行的悲观锁原子认领一条诊断任务。"""
+        result = await self.session.execute(
+            select(Diagnosis)
+            .where(Diagnosis.id == diagnosis_id)
+            .with_for_update(skip_locked=True)
+        )
+        return result.scalar_one_or_none()
+
     async def mark_running(self, diagnosis: Diagnosis) -> None:
         """更新 ``mark_running`` 对应的状态。"""
         diagnosis.status = "running"

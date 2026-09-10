@@ -60,6 +60,7 @@ class DiagnosisOrchestrator:
         agent_initial_state: AgentRunState | None = None,
         agent_resume_observations: list[dict[str, Any]] | None = None,
         agent_checkpoint_writer: Callable[[AgentCheckpoint], Awaitable[None]] | None = None,
+        agent_recovered_result: DiagnosisResult | None = None,
     ) -> OrchestrationOutput:
         """按安全顺序生成 CI 诊断，并在检索、工具或模型失败时保留可用结果。"""
         started = time.perf_counter()
@@ -82,6 +83,23 @@ class DiagnosisOrchestrator:
         }
         agent_state: AgentRunState | None = None
         if mode == "agent":
+            if agent_recovered_result is not None and agent_initial_state is not None:
+                agent_initial_state.status = "succeeded"
+                agent_initial_state.stop_reason = AgentStopReason.COMPLETED
+                agent_recovered_result.references = references
+                return OrchestrationOutput(
+                    result=agent_recovered_result,
+                    trace={
+                        "mode": "agent",
+                        "duration_ms": round((time.perf_counter() - started) * 1000, 2),
+                        "clean_log_chars": len(clean_log),
+                        "reference_count": len(references),
+                        "rag_error": rag_error,
+                        "agent": agent_initial_state.model_dump(mode="json"),
+                        "recovered_result": True,
+                        "fallback_used": False,
+                    },
+                )
             runtime = BoundedAgentRuntime(
                 self.gateway,
                 self.tool_executor,
@@ -103,11 +121,11 @@ class DiagnosisOrchestrator:
                 )
                 agent_state = agent_output.state
             except asyncio.TimeoutError:
-                agent_state = AgentRunState(
-                    goal="Diagnose the CI failure using trusted read-only evidence",
-                    status="stopped",
-                    stop_reason=AgentStopReason.TIMEOUT,
+                agent_state = runtime.current_state or agent_initial_state or AgentRunState(
+                    goal="Diagnose the CI failure using trusted read-only evidence"
                 )
+                agent_state.status = "stopped"
+                agent_state.stop_reason = AgentStopReason.TIMEOUT
                 agent_output = None
             if agent_output is not None and agent_output.result is not None:
                 agent_output.result.references = references

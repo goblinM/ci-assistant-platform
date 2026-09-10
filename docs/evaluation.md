@@ -85,12 +85,16 @@ pytest -q \
 ## Agent P0 对照评测
 
 需要补充运行时证据的固定场景位于 `ci_assistant/agent_evaluation_cases.json`，覆盖 GitLab、
-Jenkins、GitHub Actions 共 10 个 Case。`evaluation/agent.py` 接收同一 Case 的 Workflow 与
-Agent 结果，统一计算 task success、error type accuracy、tool precision/recall、无效/重复/
+Jenkins、GitHub Actions 共 10 个 Case。`evaluation/agent.py` 的
+`run_agent_ab_evaluation` 会对每个 Case 实际调用注入的 Workflow 与 Agent Runner，再由
+`evaluate_agent_comparison` 统一计算 task success、error type accuracy、tool precision/recall、无效/重复/
 越权调用率、平均轮数、平均与 p95 延迟、fallback rate、输入/输出 Token 和成本。
+`orchestration_output_to_evaluation` 可把现有编排结果直接转换为上述评测记录，同时提取工具
+调用、安全停止和自检次数，不包含日志或 Observation 正文。
 
-数据文件当前定义测试场景与期望工具，不伪造尚未运行的真实模型指标。扩大 Agent 流量前，
-必须使用固定模型版本执行两种模式并保存同批 Case 的真实结果；越权调用率必须为零。
+数据文件当前定义测试场景与期望工具，不伪造尚未运行的真实模型指标。Harness 不绑定模型
+或外部 Provider，调用方需注入固定版本的真实 Runner。扩大 Agent 流量前，必须执行两种模式
+并保存同批 Case 的真实结果；越权调用率必须为零。
 
 ## 离线排序评测
 

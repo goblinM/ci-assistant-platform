@@ -94,12 +94,19 @@ Schema 错误、预算耗尽或超时都会产生稳定停止原因并回退 Wor
 
 Agent P1A 将 Run 与 Step 追加持久化，并在每个已完成步骤后用独立短事务提交检查点；Worker
 重试从已提交预算、工具指纹和脱敏受限 Observation 上下文继续，避免重复已完成的只读工具。
-只读 Replay API 只返回步骤摘要和内容 Hash，不返回内部续跑上下文。
+最终结构化答案在 Diagnosis 提交前保存为恢复快照，重试可直接补写结果而不重复调用模型。
+诊断任务使用 PostgreSQL 行锁原子认领，Run/Step 依靠唯一约束和 Savepoint 幂等写入；Agent
+总超时保留已消耗轮次和工具状态。只读 Replay API 只返回步骤摘要和内容 Hash，不返回内部
+续跑上下文。
 
 P1B 将工具策略扩展为 `effect`、`risk` 和 `allow|ask|deny`。当前执行器仍只接受
 `effect=read` 且 `policy=allow` 的工具；动作提案可被人工批准或拒绝，但平台没有提案执行器，
 所以 `approved` 仅是审计状态，不会评论、重跑 CI 或修改代码。自动 Memory、Skill、MCP 和
 Multi-Agent 仍不在本阶段范围内。
+
+提案决策在数据库行锁内完成，每个提案最多保存一个批准或拒绝审计；已过期提案通过正常
+事务路径持久化为 `expired`。诊断 API 在记录提交成功后才派发 Celery 任务，避免 Worker
+读取尚未提交的 Diagnosis。
 
 ### 知识边界
 

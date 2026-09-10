@@ -45,6 +45,7 @@ docker-compose ps
 
 ## 关联文档
 
+- Docker 部署与升级：`DEPLOYMENT.md`
 - 架构：`architecture.md`
 - API：`api_examples.md`
 - 运维：`platform_operations.md`

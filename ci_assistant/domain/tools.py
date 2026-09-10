@@ -20,6 +20,7 @@ class ToolSpec(BaseModel):
     description: str
     func: ToolCallable
     capability: ProviderCapability
+    input_schema: dict[str, Any] = Field(default_factory=dict)
     tags: frozenset[str] = Field(default_factory=frozenset)
     trigger_keywords: frozenset[str] = Field(default_factory=frozenset)
     read_only: bool = True

@@ -21,6 +21,12 @@ MVP 验收证据保留在 `mvp_acceptance_report.md`。
 
 ## 已完成
 
+- 2026-08-24 完成受控 Agent 第三阶段可观测闭环：证据缺口持久化与 Replay、低基数工具/
+  自检 Prometheus 指标，以及编排输出到 A/B Harness 的安全适配器。
+- 2026-08-24 完成受控 Agent 第二阶段上下文与推理加固：分区上下文保留最新 Observation、
+  完整只读工具 JSON Schema、证据缺口规划契约、低置信度/证据冲突单次自检和真实 A/B Runner Harness。
+- 2026-08-24 完成受控 Agent 第一阶段可靠性加固：提交后派发、Worker 行锁认领、Run/Step
+  幂等 Savepoint、超时状态保留、最终答案恢复快照，以及 Proposal 原子单次审批和过期持久化。
 - 2026-08-12 完成 Agent P1A/P1B 只提案模式：Run/Step 检查点、Worker 续跑、租户级只读
   Replay、Tool allow/ask/deny 元数据、Action Proposal 与不可变审批审计；未增加动作执行器。
 - 2026-08-10 完成默认关闭的只读 Agent P0：有界 Loop、双重开关、运行状态、硬预算、

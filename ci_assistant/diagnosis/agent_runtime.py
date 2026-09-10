@@ -65,6 +65,7 @@ class BoundedAgentRuntime:
         self.gateway = gateway
         self.tool_executor = tool_executor
         self.limits = limits
+        self.current_state: AgentRunState | None = None
 
     async def run(
         self,
@@ -82,6 +83,7 @@ class BoundedAgentRuntime:
         state = initial_state or AgentRunState(
             goal="Diagnose the CI failure using trusted read-only evidence"
         )
+        self.current_state = state
         state.status = "running"
         state.stop_reason = None
         observations = list(resume_observations or [])
@@ -102,7 +104,14 @@ class BoundedAgentRuntime:
             and all(value is not None for value in tool_arguments[spec.name].values())
         }
         tool_schemas = [
-            {"name": spec.name, "description": spec.description}
+            {
+                "name": spec.name,
+                "description": spec.description,
+                "input_schema": getattr(spec, "input_schema", {}) or {},
+                "argument_source": "server",
+                "effect": getattr(spec, "effect", "read"),
+                "risk": getattr(spec, "risk", "low"),
+            }
             for spec in allowed.values()
         ]
 
@@ -135,12 +144,48 @@ class BoundedAgentRuntime:
             state.model_output_tokens += decision.output_tokens
 
             if decision.action == "final_answer":
+                evidence_conflict = self._has_evidence_conflict(observations)
+                self_check_used = any(step.action == "self_check" for step in state.steps)
+                if (
+                    round_number < self.limits.max_rounds
+                    and not self_check_used
+                    and (
+                        decision.final_result.confidence == "low"
+                        or evidence_conflict
+                    )
+                ):
+                    self_check_context = {
+                        "type": "self_check",
+                        "draft": decision.final_result.model_dump(mode="json"),
+                        "evidence_conflict": evidence_conflict,
+                        "instruction": (
+                            "Re-check the draft against available evidence once. "
+                            "Correct unsupported claims or request one allowed read-only tool."
+                        ),
+                    }
+                    observations.append(self_check_context)
+                    await self._append_step(
+                        state,
+                        AgentStep(
+                            round=round_number,
+                            action="self_check",
+                            error_code=(
+                                "SELF_CHECK_LOW_CONFIDENCE"
+                                if decision.final_result.confidence == "low"
+                                else "SELF_CHECK_EVIDENCE_CONFLICT"
+                            ),
+                        ),
+                        checkpoint_writer,
+                        observation_context=self_check_context,
+                    )
+                    continue
                 state.status = "succeeded"
                 state.stop_reason = AgentStopReason.COMPLETED
                 await self._append_step(
                     state,
                     AgentStep(round=round_number, action="final_answer"),
                     checkpoint_writer,
+                    result_snapshot=decision.final_result,
                 )
                 return AgentRuntimeOutput(result=decision.final_result, state=state)
 
@@ -152,6 +197,7 @@ class BoundedAgentRuntime:
                         round=round_number,
                         action="tool_request",
                         tool_name=tool_name,
+                        evidence_gap=decision.evidence_gap,
                         error_code="TOOL_POLICY_DENIED",
                     ),
                     checkpoint_writer,
@@ -169,6 +215,7 @@ class BoundedAgentRuntime:
                         round=round_number,
                         action="tool_request",
                         tool_name=tool_name,
+                        evidence_gap=decision.evidence_gap,
                         tool_fingerprint=fingerprint,
                         error_code="REPEATED_TOOL_CALL",
                     ),
@@ -189,6 +236,7 @@ class BoundedAgentRuntime:
                             round=round_number,
                             action="tool_request",
                             tool_name=tool_name,
+                            evidence_gap=decision.evidence_gap,
                             tool_fingerprint=fingerprint,
                             error_code="EMPTY_OBSERVATION",
                         ),
@@ -207,6 +255,7 @@ class BoundedAgentRuntime:
                     round=round_number,
                     action="tool_request",
                     tool_name=tool_name,
+                    evidence_gap=decision.evidence_gap,
                     tool_fingerprint=fingerprint,
                     observation=self._trace_observation(observation),
                     error_code=error_code,
@@ -223,6 +272,7 @@ class BoundedAgentRuntime:
         step: AgentStep,
         checkpoint_writer: CheckpointWriter | None,
         observation_context: dict[str, Any] | None = None,
+        result_snapshot: DiagnosisResult | None = None,
     ) -> None:
         """追加步骤，并在配置持久化写入器时提交安全检查点。"""
         state.steps.append(step)
@@ -232,6 +282,7 @@ class BoundedAgentRuntime:
                     state=state.model_copy(deep=True),
                     step=step,
                     observation_context=observation_context,
+                    result_snapshot=result_snapshot,
                 )
             )
 
@@ -242,17 +293,46 @@ class BoundedAgentRuntime:
         observations: list[dict[str, Any]],
     ) -> str:
         """按分区预算构造不含完整历史重复内容的 Agent 决策上下文。"""
-        references_json = json.dumps(
-            [item.model_dump() for item in references], ensure_ascii=False
+        limit = self.limits.context_max_chars
+        header = (
+            "GOAL:\nDiagnose the CI failure using only supplied evidence and listed "
+            "read-only tools. For a tool request, state the unresolved evidence gap.\n\n"
         )
-        observations_json = json.dumps(observations, ensure_ascii=False)
-        sections = (
-            "GOAL:\nDiagnose the CI failure. Use only listed read-only tools.\n\n"
-            f"CI LOG (untrusted):\n{log}\n\n"
-            f"KNOWLEDGE (untrusted):\n{references_json}\n\n"
-            f"OBSERVATIONS (untrusted):\n{observations_json}"
-        )
-        return sections[: self.limits.context_max_chars]
+        latest = observations[-1:] if observations else []
+        older = observations[:-1] if observations else []
+        payloads = {
+            "LATEST OBSERVATION (untrusted)": json.dumps(latest, ensure_ascii=False),
+            "CI LOG (untrusted)": log,
+            "KNOWLEDGE (untrusted)": json.dumps(
+                [item.model_dump() for item in references], ensure_ascii=False
+            ),
+            "OLDER OBSERVATIONS (untrusted)": json.dumps(older, ensure_ascii=False),
+        }
+        remaining = max(0, limit - len(header))
+        weights = {
+            "LATEST OBSERVATION (untrusted)": 0.35,
+            "CI LOG (untrusted)": 0.35,
+            "KNOWLEDGE (untrusted)": 0.2,
+            "OLDER OBSERVATIONS (untrusted)": 0.1,
+        }
+        sections = [header.rstrip()]
+        for label, content in payloads.items():
+            wrapper = len(label) + 3
+            quota = max(0, int(remaining * weights[label]) - wrapper)
+            sections.append(f"{label}:\n{self._tail_bounded(content, quota)}")
+        return "\n\n".join(sections)[:limit]
+
+    @staticmethod
+    def _tail_bounded(content: str, limit: int) -> str:
+        """从分区尾部保留受限内容，使最新日志或 Observation 信号优先可见。"""
+        if limit <= 0:
+            return ""
+        if len(content) <= limit:
+            return content
+        marker = "...[truncated]..."
+        if limit <= len(marker):
+            return content[-limit:]
+        return marker + content[-(limit - len(marker)) :]
 
     def _summarize_observation(self, result: dict[str, Any]) -> dict[str, Any]:
         """生成适合 Trace 和下一轮上下文的受限结构化 Observation。"""
@@ -264,6 +344,7 @@ class BoundedAgentRuntime:
         return {
             "status": "ok",
             "keys": sorted(str(key) for key in result)[:20],
+            "signals": self._extract_signals(sanitized),
             "content": bounded,
             "truncated": len(encoded) > len(bounded),
             "original_chars": len(encoded),
@@ -277,10 +358,33 @@ class BoundedAgentRuntime:
             "status": observation.get("status"),
             "error_type": observation.get("error_type"),
             "keys": observation.get("keys", []),
+            "signals": observation.get("signals", {}),
             "truncated": bool(observation.get("truncated")),
             "original_chars": int(observation.get("original_chars", len(content))),
             "content_hash": hashlib.sha256(content.encode()).hexdigest(),
         }
+
+    @staticmethod
+    def _extract_signals(value: dict[str, Any]) -> dict[str, str]:
+        """提取少量稳定状态字段，用于不读取正文的证据冲突检测。"""
+        signals: dict[str, str] = {}
+        for key in ("status", "conclusion", "result"):
+            item = value.get(key)
+            if isinstance(item, (str, int, float, bool)):
+                signals[key] = str(item).lower()
+        return signals
+
+    @staticmethod
+    def _has_evidence_conflict(observations: list[dict[str, Any]]) -> bool:
+        """判断多个成功 Observation 是否在同名稳定状态字段上互相冲突。"""
+        values: dict[str, set[str]] = {}
+        for item in observations:
+            result = item.get("result") if isinstance(item, dict) else None
+            if not isinstance(result, dict) or result.get("status") != "ok":
+                continue
+            for key, value in (result.get("signals") or {}).items():
+                values.setdefault(str(key), set()).add(str(value))
+        return any(len(items) > 1 for items in values.values())
 
     @classmethod
     def _mask_sensitive_values(cls, value: Any) -> Any:

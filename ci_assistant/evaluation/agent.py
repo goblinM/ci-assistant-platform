@@ -1,6 +1,77 @@
 from __future__ import annotations
 
+import inspect
+import time
+from collections.abc import Awaitable, Callable
 from typing import Any
+
+
+EvaluationRunner = Callable[
+    [dict[str, Any]], dict[str, Any] | Awaitable[dict[str, Any]]
+]
+
+
+def orchestration_output_to_evaluation(output: Any) -> dict[str, Any]:
+    """把现有编排输出转换为 A/B Harness 的稳定、无日志评测记录。"""
+    trace = dict(output.trace or {})
+    agent = dict(trace.get("agent") or {})
+    steps = list(agent.get("steps") or [])
+    error_codes = [str(step.get("error_code") or "") for step in steps]
+    return {
+        "task_success": output.result.error_type != "unknown",
+        "error_type": output.result.error_type,
+        "tool_calls": [
+            step.get("tool_name")
+            for step in steps
+            if step.get("action") == "tool_request" and step.get("tool_name")
+        ],
+        "invalid_tool_calls": sum(
+            code in {"MODEL_DECISION_INVALID", "EMPTY_OBSERVATION"}
+            for code in error_codes
+        ),
+        "repeated_tool_calls": error_codes.count("REPEATED_TOOL_CALL"),
+        "policy_denied_calls": error_codes.count("TOOL_POLICY_DENIED"),
+        "self_checks": sum(step.get("action") == "self_check" for step in steps),
+        "rounds": int(agent.get("rounds") or 0),
+        "latency_ms": float(trace.get("duration_ms") or 0),
+        "input_tokens": int(
+            agent.get("model_input_tokens")
+            or agent.get("estimated_input_tokens")
+            or 0
+        ),
+        "output_tokens": int(agent.get("model_output_tokens") or 0),
+        "fallback_used": bool(trace.get("fallback_used")),
+    }
+
+
+async def run_agent_ab_evaluation(
+    cases: list[dict[str, Any]],
+    *,
+    workflow_runner: EvaluationRunner,
+    agent_runner: EvaluationRunner,
+) -> dict[str, Any]:
+    """真实执行每个固定用例的 Workflow/Agent Runner，并汇总统一对照指标。"""
+    executed: list[dict[str, Any]] = []
+    for source in cases:
+        case = dict(source)
+        case["workflow"] = await _run_case(workflow_runner, case)
+        case["agent"] = await _run_case(agent_runner, case)
+        executed.append(case)
+    return {"metrics": evaluate_agent_comparison(executed), "cases": executed}
+
+
+async def _run_case(
+    runner: EvaluationRunner,
+    case: dict[str, Any],
+) -> dict[str, Any]:
+    """执行同步或异步 Runner，并在其未提供时补充真实墙钟延迟。"""
+    started = time.perf_counter()
+    outcome = runner(case)
+    if inspect.isawaitable(outcome):
+        outcome = await outcome
+    result = dict(outcome)
+    result.setdefault("latency_ms", round((time.perf_counter() - started) * 1000, 2))
+    return result
 
 
 def evaluate_agent_comparison(cases: list[dict[str, Any]]) -> dict[str, Any]:
@@ -24,6 +95,7 @@ def evaluate_agent_comparison(cases: list[dict[str, Any]]) -> dict[str, Any]:
         "agent_output_tokens": 0,
         "agent_cost": 0,
         "agent_fallbacks": 0,
+        "agent_self_checks": 0,
     }
     latencies: list[float] = []
     for case in cases:
@@ -51,6 +123,7 @@ def evaluate_agent_comparison(cases: list[dict[str, Any]]) -> dict[str, Any]:
             "input_tokens",
             "output_tokens",
             "cost",
+            "self_checks",
         ):
             metric_name = (
                 f"agent_{name}"
@@ -61,6 +134,7 @@ def evaluate_agent_comparison(cases: list[dict[str, Any]]) -> dict[str, Any]:
                     "input_tokens",
                     "output_tokens",
                     "cost",
+                    "self_checks",
                 }
                 else name
             )
@@ -96,4 +170,5 @@ def evaluate_agent_comparison(cases: list[dict[str, Any]]) -> dict[str, Any]:
         "average_output_tokens": totals["agent_output_tokens"] / count,
         "average_cost": totals["agent_cost"] / count,
         "fallback_rate": totals["agent_fallbacks"] / count,
+        "average_self_checks": totals["agent_self_checks"] / count,
     }

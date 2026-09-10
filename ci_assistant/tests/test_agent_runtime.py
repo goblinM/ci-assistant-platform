@@ -2,6 +2,8 @@ import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
+
 from ci_assistant.domain.ci import ProviderCapability
 from ci_assistant.domain.tools import ToolSpec
 from ci_assistant.diagnosis.agent_runtime import (
@@ -12,7 +14,7 @@ from ci_assistant.diagnosis.agent_runtime import (
 from ci_assistant.diagnosis.orchestrator import DiagnosisOrchestrator
 from ci_assistant.schemas.agent import AgentDecision, AgentRunState, AgentStep, AgentStopReason
 from ci_assistant.schemas.result import DiagnosisResult
-from ci_assistant.tools import ProviderToolExecutor
+from ci_assistant.tools import ProviderToolExecutor, default_tool_specs
 
 
 def _result() -> DiagnosisResult:
@@ -32,11 +34,12 @@ class SequenceGateway:
     def __init__(self, *decisions: AgentDecision | Exception) -> None:
         self.decisions = list(decisions)
         self.prompts = []
+        self.tools = []
 
     async def decide(self, prompt, tools):
         """返回下一条测试决策或抛出预设异常。"""
         self.prompts.append(prompt)
-        del tools
+        self.tools.append(tools)
         value = self.decisions.pop(0)
         if isinstance(value, Exception):
             raise value
@@ -82,10 +85,58 @@ def _run(gateway, *, limits=None, executor=None):
 
 def test_agent_completes_with_structured_result() -> None:
     """验证 Agent 最终回答会以 completed 状态结束且不调用工具。"""
-    output = _run(SequenceGateway(AgentDecision(action="final_answer", final_result=_result())))
+    gateway = SequenceGateway(AgentDecision(action="final_answer", final_result=_result()))
+    output = _run(gateway)
     assert output.result == _result()
     assert output.state.stop_reason == AgentStopReason.COMPLETED
     assert output.state.tool_calls == 0
+    assert gateway.tools[0][0]["argument_source"] == "server"
+    assert gateway.tools[0][0]["effect"] == "read"
+
+
+def test_tool_request_requires_a_concrete_evidence_gap() -> None:
+    """验证模型不能在未说明证据缺口时盲目请求工具。"""
+    with pytest.raises(ValueError, match="evidence_gap"):
+        AgentDecision(action="tool_request", tool_name="get_job_context")
+
+
+def test_default_tools_publish_server_owned_json_schemas() -> None:
+    """验证默认只读工具具备完整参数 Schema，且禁止模型追加参数。"""
+    for spec in default_tool_specs():
+        assert spec.input_schema["type"] == "object"
+        assert spec.input_schema["additionalProperties"] is False
+        assert "project_ref" in spec.input_schema["required"]
+
+
+def test_agent_context_keeps_latest_observation_under_pressure() -> None:
+    """验证超长日志和知识不会挤掉最新工具 Observation。"""
+    runtime = BoundedAgentRuntime(
+        SequenceGateway(), _executor(), AgentRuntimeLimits(context_max_chars=900)
+    )
+    prompt = runtime._build_prompt(
+        "old-log-" * 500,
+        [],
+        [
+            {"tool_name": "old", "result": {"content": "old" * 100}},
+            {"tool_name": "latest", "result": {"content": "LATEST_SIGNAL_42"}},
+        ],
+    )
+    assert len(prompt) <= 900
+    assert "LATEST_SIGNAL_42" in prompt
+
+
+def test_low_confidence_answer_gets_one_bounded_self_check() -> None:
+    """验证低置信度草稿只触发一次自检，并由下一轮答案结束。"""
+    low = _result().model_copy(update={"confidence": "low"})
+    gateway = SequenceGateway(
+        AgentDecision(action="final_answer", final_result=low),
+        AgentDecision(action="final_answer", final_result=_result()),
+    )
+    output = _run(gateway)
+    assert output.result == _result()
+    assert [step.action for step in output.state.steps] == ["self_check", "final_answer"]
+    assert output.state.rounds == 2
+    assert "Re-check the draft" in gateway.prompts[1]
 
 
 def test_agent_mode_requires_request_and_platform_feature_flag() -> None:
@@ -97,14 +148,18 @@ def test_agent_mode_requires_request_and_platform_feature_flag() -> None:
 
 def test_agent_blocks_unknown_tool_by_policy() -> None:
     """验证模型请求候选集外工具时由运行时拒绝并停止。"""
-    output = _run(SequenceGateway(AgentDecision(action="tool_request", tool_name="rerun_ci")))
+    output = _run(SequenceGateway(AgentDecision(
+        action="tool_request", tool_name="rerun_ci", evidence_gap="Need rerun evidence"
+    )))
     assert output.result is None
     assert output.state.stop_reason == AgentStopReason.POLICY_DENIED
 
 
 def test_agent_blocks_repeated_tool_call() -> None:
     """验证相同工具和服务端参数的重复调用会被指纹阻断。"""
-    decision = AgentDecision(action="tool_request", tool_name="get_job_context")
+    decision = AgentDecision(
+        action="tool_request", tool_name="get_job_context", evidence_gap="Need job status"
+    )
     output = _run(SequenceGateway(decision, decision))
     assert output.state.stop_reason == AgentStopReason.REPEATED_CALL
     assert output.state.tool_calls == 1
@@ -112,7 +167,9 @@ def test_agent_blocks_repeated_tool_call() -> None:
 
 def test_agent_enforces_tool_and_round_budgets() -> None:
     """验证工具预算和最大轮数都会形成稳定停止原因。"""
-    decision = AgentDecision(action="tool_request", tool_name="get_job_context")
+    decision = AgentDecision(
+        action="tool_request", tool_name="get_job_context", evidence_gap="Need job status"
+    )
     tool_budget = _run(
         SequenceGateway(decision),
         limits=AgentRuntimeLimits(max_tool_calls=0),
@@ -139,7 +196,9 @@ def test_agent_enforces_context_budget_and_model_errors() -> None:
 def test_agent_stops_on_empty_observation() -> None:
     """验证空工具结果不会继续消耗轮次，而是触发稳定回退。"""
     output = _run(
-        SequenceGateway(AgentDecision(action="tool_request", tool_name="get_job_context")),
+        SequenceGateway(AgentDecision(
+            action="tool_request", tool_name="get_job_context", evidence_gap="Need job status"
+        )),
         executor=_executor({}),
     )
     assert output.state.stop_reason == AgentStopReason.MODEL_ERROR
@@ -159,7 +218,9 @@ def test_agent_bounds_individual_tool_execution_time() -> None:
     executor.execute = slow_execute
     output = _run(
         SequenceGateway(
-            AgentDecision(action="tool_request", tool_name="get_job_context"),
+            AgentDecision(
+                action="tool_request", tool_name="get_job_context", evidence_gap="Need job status"
+            ),
             AgentDecision(action="final_answer", final_result=_result()),
         ),
         executor=executor,
@@ -174,7 +235,9 @@ def test_agent_bounds_individual_tool_execution_time() -> None:
 def test_agent_masks_observation_secrets_before_trace() -> None:
     """验证工具 Observation 进入步骤轨迹前会脱敏且按预算截断。"""
     gateway = SequenceGateway(
-        AgentDecision(action="tool_request", tool_name="get_job_context"),
+        AgentDecision(
+            action="tool_request", tool_name="get_job_context", evidence_gap="Need job status"
+        ),
         AgentDecision(action="final_answer", final_result=_result()),
     )
     output = _run(
@@ -210,6 +273,60 @@ def test_orchestrator_times_out_agent_and_falls_back_to_workflow() -> None:
     )
     assert output.result.fallback_used is True
     assert output.trace["agent"]["stop_reason"] == "timeout"
+    assert output.trace["agent"]["rounds"] == 1
+
+
+def test_final_answer_checkpoint_contains_recoverable_result() -> None:
+    """验证最终回答在 Diagnosis 提交前先进入可恢复检查点。"""
+    checkpoints = []
+
+    async def write_checkpoint(checkpoint):
+        """收集 Runtime 产生的测试检查点。"""
+        checkpoints.append(checkpoint)
+
+    runtime = BoundedAgentRuntime(
+        SequenceGateway(AgentDecision(action="final_answer", final_result=_result())),
+        _executor(),
+        AgentRuntimeLimits(),
+    )
+    output = asyncio.run(
+        runtime.run(
+            log="tests failed",
+            references=[],
+            provider=MagicMock(),
+            tool_arguments={},
+            use_tools=False,
+            checkpoint_writer=write_checkpoint,
+        )
+    )
+    assert output.result == _result()
+    assert checkpoints[-1].result_snapshot == _result()
+    assert checkpoints[-1].state.stop_reason == AgentStopReason.COMPLETED
+
+
+def test_orchestrator_reuses_recovered_answer_without_model_call() -> None:
+    """验证 Worker 重试可直接复用已生成答案，而不再次调用模型。"""
+    gateway = MagicMock()
+    gateway.decide = AsyncMock()
+    state = AgentRunState(
+        goal="Diagnose",
+        status="succeeded",
+        rounds=2,
+        stop_reason=AgentStopReason.COMPLETED,
+    )
+    output = asyncio.run(
+        DiagnosisOrchestrator(gateway).diagnose(
+            "tests failed",
+            mode="agent",
+            use_rag=False,
+            use_tools=False,
+            agent_initial_state=state,
+            agent_recovered_result=_result(),
+        )
+    )
+    assert output.result == _result()
+    assert output.trace["recovered_result"] is True
+    gateway.decide.assert_not_awaited()
 
 
 def test_agent_resumes_after_completed_read_only_step() -> None:

@@ -61,3 +61,29 @@
 - 权限：Tool Policy 使用 `effect`、`risk`、`allow|ask|deny`；只有只读且 allow 的工具可执行。
 - 提案：人工批准和拒绝形成不可变审计事件，但 P1 不提供动作执行器，批准不产生外部副作用。
 - 延后：自动 Memory、Skill、MCP、写工具和 Multi-Agent 继续单独评审。
+
+## ADR-009：Agent 可靠性采用提交后派发、数据库认领与结果快照
+
+- 状态：已接受。
+- 派发：Diagnosis 在数据库提交成功后才发送 Celery 任务，避免消费早于数据可见。
+- 认领：Worker 使用 PostgreSQL `FOR UPDATE SKIP LOCKED` 串行化同一诊断，事务失败时锁和
+  状态一起回滚。
+- 幂等：Agent Run/Step 使用唯一约束与 Savepoint 处理并发插入；同序号不同内容视为冲突。
+- 恢复：最终结构化答案先写入 Agent Run 快照，再与 Diagnosis 结果提交；重试直接复用快照。
+- 审批：Proposal 在行锁内完成一次决策，过期状态通过可提交的 409 响应持久化。
+- 边界：不增加写工具、动作执行器、Memory、MCP 或 Multi-Agent。
+
+## ADR-010：Agent 推理增强采用证据缺口、分区上下文与按需单次自检
+
+- 状态：已接受。
+- 上下文：日志、知识、最新 Observation 和旧 Observation 使用独立预算，最新 Observation
+  优先保留，总字符和估算 Token 硬预算保持不变。
+- 工具：模型可见完整 JSON Schema，但只选择工具名并说明证据缺口；项目、租户和运行参数
+  继续由服务端注入，Schema 禁止附加参数。
+- 自检：仅在低置信度或稳定状态证据冲突时增加一次自检，并受既有最大轮数和总预算约束。
+- 评测：A/B Harness 必须实际调用同批 Case 的 Workflow/Agent Runner，不接受静态样例冒充
+  真实运行指标。
+- 审计：工具证据缺口随 Step 持久化并进入租户级只读 Replay；Prometheus 只使用固定工具名、
+  结果和自检触发标签，未知工具统一归类，禁止把模型文本放入标签。
+- 适配：编排输出通过无日志适配器进入 A/B Harness，不读取完整 Prompt 或 Observation 正文。
+- 边界：不引入独立 Critic、Memory、MCP、写工具或 Multi-Agent。

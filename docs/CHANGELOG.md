@@ -4,6 +4,12 @@
 
 ## Unreleased
 
+- 持久化 Agent 工具证据缺口并纳入只读 Replay，增加低基数工具决策、自检和证据缺口指标，
+  以及编排输出到 A/B Harness 的安全适配器。
+- 增加 Agent 分区上下文、完整只读工具 JSON Schema、证据缺口规划、低置信度/证据冲突
+  单次自检，以及实际执行 Workflow/Agent Runner 的 A/B Harness。
+- 加固 Agent 可靠性：诊断提交后派发、Worker 原子认领、Run/Step 并发幂等、超时状态保留、
+  最终答案断点恢复，以及 Proposal 单次原子审批和过期状态持久化。
 - 增加 Agent P1A/P1B 只提案模式：可恢复 Run/Step 检查点、只读 Replay、细粒度 Tool Policy、
   动作提案和审批审计；批准状态不会触发任何外部动作。
 - 增加默认关闭的只读 Agent P0：双重模式门、有界循环、服务端 Tool 参数注入、重复调用

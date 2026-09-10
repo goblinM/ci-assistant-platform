@@ -61,7 +61,8 @@ async def create_log_diagnosis(
         error_code=None,
     )
     await repository.add(diagnosis)
-
+    # 诊断必须先提交，避免 Celery Worker 在记录对其他事务可见前消费任务。
+    await session.commit()
     _dispatch(request, diagnosis.id)
 
     data = DiagnosisAccepted(
@@ -121,6 +122,8 @@ async def create_run_diagnosis(
         error_code=None,
     )
     await DiagnosisRepository(session).add(diagnosis)
+    # 明确建立“持久化成功后派发”的事务边界。
+    await session.commit()
     _dispatch(request, diagnosis.id)
     data = DiagnosisAccepted(
         diagnosis_id=diagnosis.id,

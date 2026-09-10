@@ -30,6 +30,7 @@ class AgentDecision(BaseModel):
 
     action: Literal["final_answer", "tool_request"]
     tool_name: str | None = None
+    evidence_gap: str | None = Field(default=None, max_length=500)
     final_result: DiagnosisResult | None = None
     input_tokens: int = Field(default=0, ge=0, exclude=True)
     output_tokens: int = Field(default=0, ge=0, exclude=True)
@@ -37,8 +38,11 @@ class AgentDecision(BaseModel):
     @model_validator(mode="after")
     def validate_action_payload(self) -> AgentDecision:
         """保证每轮决策只携带当前动作需要的一种有效载荷。"""
-        if self.action == "tool_request" and not self.tool_name:
-            raise ValueError("tool_request requires tool_name")
+        if self.action == "tool_request":
+            if not self.tool_name:
+                raise ValueError("tool_request requires tool_name")
+            if not self.evidence_gap or not self.evidence_gap.strip():
+                raise ValueError("tool_request requires evidence_gap")
         if self.action == "final_answer" and self.final_result is None:
             raise ValueError("final_answer requires final_result")
         return self
@@ -48,8 +52,9 @@ class AgentStep(BaseModel):
     """保存单轮 Agent 决策及经过脱敏裁剪的 Observation 摘要。"""
 
     round: int = Field(ge=1)
-    action: Literal["final_answer", "tool_request"]
+    action: Literal["final_answer", "tool_request", "self_check"]
     tool_name: str | None = None
+    evidence_gap: str | None = None
     tool_fingerprint: str | None = None
     observation: dict[str, Any] | None = None
     error_code: str | None = None
@@ -76,6 +81,7 @@ class AgentCheckpoint(BaseModel):
     state: AgentRunState
     step: AgentStep
     observation_context: dict[str, Any] | None = None
+    result_snapshot: DiagnosisResult | None = None
 
 
 class ActionProposalCreate(BaseModel):

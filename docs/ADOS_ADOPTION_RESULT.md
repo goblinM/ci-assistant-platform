@@ -1,5 +1,34 @@
 # CI Assistant Platform ADOS 接入结果
 
+## 2026-08-24 受控 Agent 第三阶段可观测闭环
+
+- Agent 工具请求的证据缺口通过追加迁移持久化，并在租户级 Replay 中返回。
+- Prometheus 新增固定低基数的工具决策、自检触发和证据缺口指标，未知工具不会形成动态标签。
+- A/B Harness 可直接适配现有编排输出，提取质量、安全、轮次、Token 和自检数据，不读取日志正文。
+- 追加 `20260824_0007` Alembic revision；未增加 Memory、MCP、写工具或 Multi-Agent。
+- 验证：主包 `137 passed`；源码编译、Alembic 全历史离线升级、`git diff --check` 和 ADOS
+  14 项校验通过。
+
+## 2026-08-24 受控 Agent 第二阶段上下文与推理加固
+
+- 上下文按最新 Observation、日志、知识和旧 Observation 独立分配预算，仍服从总字符和
+  估算 Token 硬限制。
+- 默认只读工具补齐 JSON Schema；模型只能选择工具名并声明证据缺口，参数仍由服务端注入。
+- 低置信度或稳定状态证据冲突只触发一次自检，并计入原有最大轮数和预算。
+- A/B Harness 实际调用注入的 Workflow/Agent Runner，不把静态预填结果当成真实评测。
+- 边界保持不变：未增加 Memory、MCP、写工具、动作执行器、独立 Critic 或 Multi-Agent。
+
+## 2026-08-24 受控 Agent 第一阶段可靠性加固
+
+- Diagnosis 提交后才派发 Celery，Worker 使用 PostgreSQL 行锁原子认领任务。
+- Agent Run/Step 使用唯一约束和 Savepoint 幂等写入；同序号内容冲突会稳定失败。
+- Agent 超时保留真实预算状态，最终结构化答案可从 Run 快照恢复而不重复调用模型。
+- Proposal 通过行锁完成单次审批，过期状态不会再因异常响应回滚。
+- 追加 `20260824_0006` Alembic revision，不改写已有迁移；仍未增加任何外部动作执行器。
+- 验证：主包 `129 passed`；源码编译、Alembic 全历史离线升级、`git diff --check` 和 ADOS
+  14 项校验通过。全仓测试在收集兼容包实验用例时，因 15 个用例未配置 `MODEL_ID` 而停止；
+  未读取或补造模型凭据。
+
 ## 2026-08-12 Agent P1A/P1B
 
 - 追加 `agent_runs`、`agent_steps`、`action_proposals` 和
